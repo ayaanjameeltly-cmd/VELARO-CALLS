@@ -24,6 +24,12 @@ remotion/.cache/
 # Mac
 .DS_Store
 
+# Claude / agents
+.agents/
+.claude/
+CLAUDE.md
+skills-lock.json
+
 # Misc
 *.csv
 videos/
