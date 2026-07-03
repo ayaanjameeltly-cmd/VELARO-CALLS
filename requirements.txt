@@ -4,3 +4,5 @@ requests
 beautifulsoup4
 urllib3
 gunicorn
+schedule
+psycopg2-binary
