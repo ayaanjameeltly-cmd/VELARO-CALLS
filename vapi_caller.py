@@ -44,10 +44,11 @@ def pick_from_number() -> str:
 
 # A/B test variants — (agent_id, label, weight)
 AB_VARIANTS = [
-    (os.getenv("RETELL_AGENT_A", "agent_0eaaaafaff06fdaa34e2eab5c2"), "A-Pain",         40),
-    (os.getenv("RETELL_AGENT_B", ""),                                  "B-Stat",          20),
-    (os.getenv("RETELL_AGENT_C", ""),                                  "C-SocialProof",   20),
-    (os.getenv("RETELL_AGENT_D", ""),                                  "D-UltraDirect",   20),
+    (os.getenv("RETELL_AGENT_A", "agent_0eaaaafaff06fdaa34e2eab5c2"), "A-Pain",        30),
+    (os.getenv("RETELL_AGENT_B", ""),                                  "B-Stat",         20),
+    (os.getenv("RETELL_AGENT_C", ""),                                  "C-SocialProof",  20),
+    (os.getenv("RETELL_AGENT_D", ""),                                  "D-UltraDirect",  10),
+    (os.getenv("RETELL_AGENT_E", ""),                                  "E-Referral",     20),
 ]
 
 def pick_variant() -> tuple:
