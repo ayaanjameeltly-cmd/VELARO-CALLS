@@ -84,10 +84,10 @@
     <div class="flex items-center gap-2">
       <span class="text-xs text-gray-400 shrink-0">Presets:</span>
       {% for label, limit, desc in [
-        ('Week 1', 10, '10/day — new number, safest'),
-        ('Week 2', 20, '20/day — warming up'),
-        ('Week 3', 40, '40/day — building reputation'),
-        ('Week 4+', 60, '60/day — full speed'),
+        ('Week 1', 30, '30/day — 10 per number'),
+        ('Week 2', 60, '60/day — 20 per number'),
+        ('Week 3', 90, '90/day — 30 per number'),
+        ('Week 4+', 120, '120/day — full speed'),
       ] %}
       <button onclick="setLimit({{ limit }})"
         class="px-3 py-1 text-xs rounded-lg border transition-colors font-medium
