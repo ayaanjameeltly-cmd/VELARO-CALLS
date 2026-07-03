@@ -1,0 +1,833 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-xl font-semibold text-gray-900">LinkedIn Pipeline</h1>
+    <p class="text-xs text-gray-500 mt-0.5">Semi-automated warm outreach — open, act, mark done</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <!-- Live window status -->
+    <div id="window-badge" class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"></div>
+    <!-- Three clocks -->
+    <div class="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5">
+      <div class="text-center min-w-[70px]">
+        <div id="ist-time" class="text-sm font-semibold mono text-gray-900 tabular-nums"></div>
+        <div class="text-xs text-gray-400 mt-0.5">IST · You</div>
+      </div>
+      <div class="w-px h-7 bg-gray-200"></div>
+      <div class="text-center min-w-[70px]">
+        <div id="cdt-time" class="text-sm font-semibold mono text-gray-500 tabular-nums"></div>
+        <div class="text-xs text-gray-400 mt-0.5">Texas CDT</div>
+      </div>
+      <div class="w-px h-7 bg-gray-200"></div>
+      <div class="text-center min-w-[70px]">
+        <div id="edt-time" class="text-sm font-semibold mono text-gray-500 tabular-nums"></div>
+        <div class="text-xs text-gray-400 mt-0.5">FL/GA EDT</div>
+      </div>
+    </div>
+    <div class="w-px h-8 bg-gray-200"></div>
+    <a href="/leads" class="text-xs text-indigo-600 hover:text-indigo-800">+ Add leads from Leads page</a>
+  </div>
+</div>
+
+<!-- Daily limit bar -->
+<div class="bg-white border border-gray-200 rounded-xl px-5 py-3 mb-3 flex flex-wrap items-center gap-x-5 gap-y-2">
+  <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide shrink-0">Today's usage</span>
+  {% set actions = [('like','Likes','indigo',50), ('comment','Comments','violet',20), ('connect','Connections','blue',15), ('dm','DMs','sky',25)] %}
+  {% for key, label, color, hard_limit in actions %}
+  {% set used = daily_counts.get(key, 0) %}
+  {% set limit = limits[key] %}
+  {% set pct = [((used / limit) * 100)|int, 100]|min %}
+  <div class="flex items-center gap-2">
+    <span class="text-xs text-gray-500">{{ label }}</span>
+    <div class="w-16 bg-gray-100 rounded-full h-1.5">
+      <div class="h-1.5 rounded-full {{ 'bg-red-500' if pct >= 80 else 'bg-'+color+'-500' }}" style="width:{{ pct }}%"></div>
+    </div>
+    <span class="text-xs mono {{ 'text-red-600 font-semibold' if pct >= 80 else 'text-gray-600' }}">{{ used }}/{{ limit }}</span>
+  </div>
+  {% endfor %}
+  <!-- Profile views — tracked locally -->
+  <div class="flex items-center gap-2">
+    <span class="text-xs text-gray-500">Profile Views</span>
+    <div class="w-16 bg-gray-100 rounded-full h-1.5">
+      <div id="pv-bar" class="h-1.5 rounded-full bg-teal-500" style="width:0%"></div>
+    </div>
+    <span id="pv-label" class="text-xs mono text-gray-600">0/70</span>
+  </div>
+  <div class="ml-auto flex items-center gap-3">
+    <span class="text-xs text-gray-400">{{ leads|length }} active leads</span>
+    <span class="text-xs text-gray-300">·</span>
+    <span id="session-timer" class="text-xs mono text-gray-400">session 0:00</span>
+  </div>
+</div>
+
+<!-- Schedule + time rules strip -->
+<div class="bg-white border border-gray-200 rounded-xl px-5 py-3 mb-3">
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide shrink-0">Your daily schedule</span>
+    <div class="flex items-center gap-1.5">
+      <span class="w-2 h-2 rounded-full bg-gray-300 shrink-0"></span>
+      <span class="text-xs text-gray-500">5–6 AM IST · Wake up · Content prep &amp; research (US asleep)</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-2 h-2 rounded-full bg-green-500 shrink-0"></span>
+      <span class="text-xs font-semibold text-green-700">6:30–9:30 PM IST · LinkedIn outreach · = 8–11 AM Texas / 9 AM–12 PM FL</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-2 h-2 rounded-full bg-blue-400 shrink-0"></span>
+      <span class="text-xs text-blue-700">9:30 PM IST · Auto-send emails fire · = 11 AM Texas (prime inbox time)</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="w-2 h-2 rounded-full bg-gray-800 shrink-0"></span>
+      <span class="text-xs text-gray-600 font-medium">10 PM IST · Sleep ✓</span>
+    </div>
+    <button onclick="toggleChecklist()" class="ml-auto text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 shrink-0">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+      Session checklist
+    </button>
+  </div>
+  <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2.5 pt-2.5 border-t border-gray-100">
+    <span class="text-xs text-gray-400 font-medium shrink-0">Velocity:</span>
+    <span class="text-xs text-gray-500">⏱ 2–3 min between profile visits</span>
+    <span class="text-xs text-gray-300">·</span>
+    <span class="text-xs text-gray-500">Max 10–15 profiles per 30 min</span>
+    <span class="text-xs text-gray-300">·</span>
+    <span class="text-xs text-gray-500">5 connection requests per hour max</span>
+    <span class="text-xs text-gray-300">·</span>
+    <span class="text-xs text-red-600 font-medium">Keep pending connections &lt; 150</span>
+  </div>
+</div>
+
+<!-- Pre-session checklist — collapsible -->
+<div id="checklist-panel" class="hidden bg-white border border-gray-200 rounded-xl mb-5 overflow-hidden">
+  <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+    <span class="text-xs font-semibold text-gray-700">Before You Start — run through this every session</span>
+    <button onclick="toggleChecklist()" class="text-xs text-gray-400 hover:text-gray-600">close ✕</button>
+  </div>
+  <div class="grid grid-cols-3 gap-0 divide-x divide-gray-100">
+
+    <!-- Column 1: Pre-session checklist -->
+    <div class="px-5 py-4">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Pre-session checks</div>
+      <div class="space-y-2.5" id="checklist-items">
+        <label class="flex items-start gap-2.5 cursor-pointer group">
+          <input type="checkbox" class="mt-0.5 rounded accent-indigo-600 flex-shrink-0">
+          <div>
+            <div class="text-xs font-medium text-gray-700 group-hover:text-gray-900">LinkedIn profile mode set correctly</div>
+            <div class="text-xs text-gray-400">Private mode for research → Public mode before outreach (Settings → Visibility)</div>
+          </div>
+        </label>
+        <label class="flex items-start gap-2.5 cursor-pointer group">
+          <input type="checkbox" class="mt-0.5 rounded accent-indigo-600 flex-shrink-0">
+          <div>
+            <div class="text-xs font-medium text-gray-700 group-hover:text-gray-900">Not using a VPN</div>
+            <div class="text-xs text-gray-400">VPN IP changes trigger bot detection — use your home/real IP</div>
+          </div>
+        </label>
+        <label class="flex items-start gap-2.5 cursor-pointer group">
+          <input type="checkbox" class="mt-0.5 rounded accent-indigo-600 flex-shrink-0">
+          <div>
+            <div class="text-xs font-medium text-gray-700 group-hover:text-gray-900">Last session was 4+ hours ago</div>
+            <div class="text-xs text-gray-400">Don't do two heavy sessions back-to-back. Space them out.</div>
+          </div>
+        </label>
+        <label class="flex items-start gap-2.5 cursor-pointer group">
+          <input type="checkbox" class="mt-0.5 rounded accent-indigo-600 flex-shrink-0">
+          <div>
+            <div class="text-xs font-medium text-gray-700 group-hover:text-gray-900">Pending connection requests under 150</div>
+            <div class="text-xs text-gray-400">Go to My Network → Manage → withdraw any sent 2+ weeks ago with no reply</div>
+          </div>
+        </label>
+        <label class="flex items-start gap-2.5 cursor-pointer group">
+          <input type="checkbox" class="mt-0.5 rounded accent-indigo-600 flex-shrink-0">
+          <div>
+            <div class="text-xs font-medium text-gray-700 group-hover:text-gray-900">Check notifications first</div>
+            <div class="text-xs text-gray-400">Reply to any comments or DMs from yesterday before starting new outreach</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Column 2: What to do when + time rules -->
+    <div class="px-5 py-4">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Optimal windows</div>
+      <div class="space-y-2 mb-4">
+        <div class="flex items-start gap-2.5">
+          <span class="text-xs mono bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded font-medium shrink-0">9–11am</span>
+          <div class="text-xs text-gray-600">Likes + Comments (D1, D2) — low risk, warms the algorithm. Attorneys are checking LinkedIn before court.</div>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="text-xs mono bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-medium shrink-0">1–3pm</span>
+          <div class="text-xs text-gray-600">Profile views + Connection requests (D3) — lunch break = high open rate.</div>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="text-xs mono bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded font-medium shrink-0">5–7pm</span>
+          <div class="text-xs text-gray-600">DMs to accepted connections (D7, D10) — end of day, more relaxed, higher reply rate.</div>
+        </div>
+      </div>
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Velocity rules</div>
+      <div class="space-y-1.5 text-xs text-gray-600">
+        <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>Visit 1 profile → wait <strong>2–3 min</strong> → next profile</div>
+        <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>Max <strong>10–15 profiles</strong> in any 30-minute window</div>
+        <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"></span>Send max <strong>5 connection requests</strong> per hour</div>
+        <div class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0"></span>Stop immediately if LinkedIn shows a CAPTCHA</div>
+      </div>
+    </div>
+
+    <!-- Column 3: Daily limits + warmup phase -->
+    <div class="px-5 py-4">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Safe daily limits by account age</div>
+      <div class="space-y-2 mb-4">
+        <div class="bg-gray-50 rounded-lg px-3 py-2">
+          <div class="text-xs font-semibold text-gray-700 mb-1.5">Week 1–2 (new account)</div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-gray-600">
+            <span>Profile views</span><span class="font-medium">20–30/day</span>
+            <span>Connections</span><span class="font-medium">5–10/day</span>
+            <span>Likes</span><span class="font-medium">15–20/day</span>
+            <span>Comments</span><span class="font-medium">5–8/day</span>
+          </div>
+        </div>
+        <div class="bg-indigo-50 rounded-lg px-3 py-2 border border-indigo-100">
+          <div class="text-xs font-semibold text-indigo-800 mb-1.5">Month 1–2 (current phase ✓)</div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-indigo-700">
+            <span>Profile views</span><span class="font-medium">50–70/day</span>
+            <span>Connections</span><span class="font-medium">15–20/day</span>
+            <span>Likes</span><span class="font-medium">30–50/day</span>
+            <span>Comments</span><span class="font-medium">10–15/day</span>
+          </div>
+        </div>
+        <div class="bg-gray-50 rounded-lg px-3 py-2">
+          <div class="text-xs font-semibold text-gray-700 mb-1.5">Month 3+ (established)</div>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-gray-600">
+            <span>Profile views</span><span class="font-medium">80–100/day</span>
+            <span>Connections</span><span class="font-medium">20–25/day</span>
+            <span>Likes</span><span class="font-medium">50–80/day</span>
+            <span>Comments</span><span class="font-medium">15–20/day</span>
+          </div>
+        </div>
+      </div>
+      <div class="bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+        <div class="text-xs font-semibold text-red-700 mb-1">If restricted:</div>
+        <div class="text-xs text-red-600 space-y-0.5">
+          <div>• Stop all connection requests for 2 weeks</div>
+          <div>• Likes/comments only during cooldown</div>
+          <div>• Don't appeal — just wait it out</div>
+          <div>• Restart at Week 1 limits after 14 days</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% if not leads %}
+<div class="bg-white border border-gray-200 rounded-xl p-12 text-center">
+  <svg class="w-10 h-10 text-gray-200 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z M4 6a2 2 0 100-4 2 2 0 000 4z"/></svg>
+  <p class="text-sm text-gray-500 mb-1">No leads in LinkedIn pipeline yet</p>
+  <p class="text-xs text-gray-400">Go to <a href="/leads" class="text-indigo-600 underline">Leads</a>, select leads, and click <strong>Add to LinkedIn Pipeline</strong></p>
+</div>
+{% else %}
+
+<!-- Stage nav bar -->
+{% set stages = ['day1','day2','day3','day4','day5','day7','day10'] %}
+{% set short = {'day1':'D1','day2':'D2','day3':'D3','day4':'D4','day5':'D5','day7':'D7','day10':'D10'} %}
+<div class="sticky top-0 z-40 bg-gray-50 pb-3 -mx-6 px-6 pt-1">
+  <div class="bg-white border border-gray-200 rounded-xl px-4 py-2 flex items-center gap-1 overflow-x-auto">
+    {% for stage in stages %}
+    {% set cnt = (leads | selectattr('stage','equalto',stage) | list) | length %}
+    <button type="button" onclick="switchStage('{{ stage }}')"
+      id="nav-{{ stage }}"
+      data-count="{{ cnt }}"
+      class="stage-nav-btn flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all
+        {{ 'bg-gray-900 text-white' if loop.first else 'text-gray-500 hover:bg-gray-100' }}">
+      <span>{{ short[stage] }}</span>
+      {% if cnt > 0 %}
+      <span class="stage-nav-count px-1.5 py-0.5 rounded-full text-xs mono
+        {{ 'bg-gray-700 text-gray-200' if loop.first else 'bg-gray-100 text-gray-600' }}">{{ cnt }}</span>
+      {% else %}
+      <span class="w-1.5 h-1.5 rounded-full {{ 'bg-gray-500' if loop.first else 'bg-gray-200' }}"></span>
+      {% endif %}
+    </button>
+    {% if not loop.last %}
+    <svg class="w-3 h-3 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Stage sections -->
+{% for stage in stages %}
+{% set stage_leads = leads | selectattr('stage','equalto',stage) | list %}
+<div id="stage-{{ stage }}" class="mb-6 hidden">
+  <div class="flex items-center gap-3 mb-3">
+    <span class="text-xs font-semibold text-gray-900 uppercase tracking-wide">{{ stage_label[stage] }}</span>
+    {% if stage_leads %}
+    <span class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs mono">{{ stage_leads|length }}</span>
+    {% endif %}
+    <div class="flex-1 border-t border-gray-100"></div>
+  </div>
+  {% if not stage_leads %}
+  <div class="text-xs text-gray-400 py-3 px-1">No leads at this stage yet — leads from earlier batches will advance here automatically.</div>
+  {% else %}
+  {% set batches = stage_leads | map(attribute='batch_date') | unique | list %}
+  {% for batch in batches %}
+  {% set batch_leads = stage_leads | selectattr('batch_date','equalto',batch) | list %}
+  {% set today_str = now().strftime('%Y-%m-%d') if now else '' %}
+  {% set batch_label = 'Added today' if batch == today_str else 'Added ' + batch %}
+  <div class="flex items-center gap-2 mb-2 {% if not loop.first %}mt-5{% endif %}">
+    <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{{ batch_label }}</span>
+    <span class="text-xs text-gray-400">{{ batch_leads|length }} lead{{ 's' if batch_leads|length != 1 }}</span>
+    <div class="flex-1 border-t border-indigo-100"></div>
+  </div>
+  <div class="space-y-3 mb-2">
+  {% for lead in batch_leads %}
+  {% set overdue = lead.hours_since and lead.hours_since > 48 %}
+  <div id="lead-{{ lead.lead_id }}" class="bg-white border {{ 'border-amber-300' if overdue else 'border-gray-200' }} rounded-xl overflow-hidden">
+
+    <!-- Lead header -->
+    <div class="flex items-center justify-between px-5 py-3 {{ 'bg-amber-50' if overdue else 'bg-gray-50' }} border-b border-gray-100">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-sm font-semibold flex-shrink-0">
+          {{ lead.name[0].upper() if lead.name else '?' }}
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-gray-900">{{ lead.name }}</p>
+          <p class="text-xs text-gray-500">{{ lead.company or '—' }}</p>
+        </div>
+        {% if overdue %}
+        <span class="px-2 py-0.5 bg-amber-100 text-amber-700 rounded-full text-xs">{{ lead.hours_since|int }}h overdue</span>
+        {% endif %}
+      </div>
+      <div class="flex items-center gap-2">
+        {% if lead.linkedin_url %}
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs text-gray-500 mono font-medium">@{{ lead.linkedin_url.split('/in/')[-1].strip('/') }}</span>
+          <button type="button" onclick="copyLiUrl('{{ lead.linkedin_url }}', this)"
+            class="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors whitespace-nowrap">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Copy Username
+          </button>
+        </div>
+        {% else %}
+        <span class="text-xs text-gray-400 px-3 py-1.5 bg-gray-100 rounded-lg">No LinkedIn URL</span>
+        {% endif %}
+        <button type="button"
+          onclick="copyVoiceNote('{{ (lead.name or '').split()[0] }}', '{{ lead.company or lead.name or 'your firm' }}', this)"
+          class="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 font-medium px-2.5 py-1.5 bg-violet-50 hover:bg-violet-100 rounded-lg transition-colors whitespace-nowrap">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+          Voice Note
+        </button>
+        <button type="button" onclick="removeLead({{ lead.lead_id }})" title="Remove from pipeline"
+          class="w-7 h-7 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Connection + Voice Note status bar (Day3+) -->
+    {% if stage in ['day3','day4','day5','day7','day10'] %}
+    <div id="cn-bar-{{ lead.lead_id }}" class="flex items-center gap-2.5 px-5 py-2.5 border-b {{ 'bg-violet-50 border-violet-100' if lead.voice_note_date else 'bg-gray-50 border-gray-100' }}">
+      <button type="button"
+        onclick="setConnectedBar({{ lead.lead_id }}, this)"
+        id="cn-btn-{{ lead.lead_id }}"
+        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors {{ 'bg-green-600 text-white border-green-600' if lead.connected else 'border-gray-300 text-gray-500 hover:bg-green-50 hover:border-green-400 hover:text-green-700' }}">
+        {% if lead.connected %}<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Connected{% else %}+ Mark Accepted{% endif %}
+      </button>
+
+      {% if lead.connected %}
+      <svg class="w-3 h-3 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      <button type="button"
+        onclick="markVoiceNote({{ lead.lead_id }}, {{ 'false' if lead.voice_note_date else 'true' }}, this)"
+        id="vn-btn-{{ lead.lead_id }}"
+        class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-colors {{ 'bg-violet-600 text-white border-violet-600' if lead.voice_note_date else 'border-violet-300 text-violet-600 hover:bg-violet-50' }}">
+        {% if lead.voice_note_date %}
+        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Voice note sent {{ lead.voice_note_date }}
+        {% else %}
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg> Mark Voice Note Sent
+        {% endif %}
+      </button>
+
+      {% if lead.voice_note_date %}
+      <span class="text-xs text-gray-400 ml-1" id="vn-due-{{ lead.lead_id }}">
+        D3 text in 3d · D7 video in 7d
+      </span>
+      {% else %}
+      <span class="text-xs text-violet-400">— send voice note now, then mark it</span>
+      {% endif %}
+      {% else %}
+      <span class="text-xs text-gray-400">— mark accepted when they accept your connect request</span>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Action section -->
+    <div class="px-5 py-4">
+
+      <!-- D1: Like posts -->
+      {% if stage == 'day1' %}
+      <div class="flex items-start gap-3 mb-4">
+        <div class="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-3.5 h-3.5 text-indigo-600" fill="currentColor" viewBox="0 0 24 24"><path d="M7.5 11.25a.75.75 0 000 1.5h9a.75.75 0 000-1.5h-9z"/><path fill-rule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM8.25 10.5a.75.75 0 011.5 0v.75a.75.75 0 01-1.5 0v-.75zm5.25-.75a.75.75 0 00-.75.75v.75a.75.75 0 001.5 0v-.75a.75.75 0 00-.75-.75z" clip-rule="evenodd"/></svg>
+        </div>
+        <div class="flex-1">
+          <p class="text-xs font-medium text-gray-700 mb-1">Like their 2–3 most recent posts</p>
+          <p class="text-xs text-gray-400">Open their profile → scroll down → like the top 2–3 posts. Note any post topics for Day 2.</p>
+        </div>
+      </div>
+      <!-- Has posts toggle -->
+      <div class="flex items-center gap-3 mb-4 p-3 bg-gray-50 rounded-lg">
+        <span class="text-xs text-gray-600">Do they have recent posts?</span>
+        <button type="button" onclick="setHasPosts({{ lead.lead_id }}, true, this)"
+          class="px-3 py-1 text-xs rounded-lg border transition-colors {{ 'bg-green-600 text-white border-green-600' if lead.has_posts == 1 else 'border-gray-300 text-gray-600 hover:bg-green-50' }}">
+          Yes
+        </button>
+        <button type="button" onclick="setHasPosts({{ lead.lead_id }}, false, this)"
+          class="px-3 py-1 text-xs rounded-lg border transition-colors {{ 'bg-red-500 text-white border-red-500' if lead.has_posts == 0 else 'border-gray-300 text-gray-600 hover:bg-red-50' }}">
+          No
+        </button>
+        {% if lead.has_posts == -1 %}
+        <span class="text-xs text-gray-400">Check their profile first</span>
+        {% endif %}
+      </div>
+
+      <!-- D2: Comment -->
+      {% elif stage == 'day2' %}
+      <p class="text-xs font-medium text-gray-700 mb-3">Comment on their most recent post — pick the one that fits:</p>
+      <div class="space-y-2 mb-4" id="comments-{{ lead.lead_id }}">
+        {% set comments = [
+          ("Post about being busy / overwhelmed", "This is exactly where a client of ours was — leads coming in but the intake side couldn't keep up. Once the response system was fixed, qualified consultations went up significantly. You're identifying the right problem."),
+          ("Post about missed calls / after-hours", "The after-hours gap is brutal in PI. Someone gets in an accident at 9pm, calls three firms, books with whoever picks up first. We solved this for a firm recently — the numbers were eye-opening."),
+          ("Post about lead quality from ads", "Interesting. What we found is it's rarely the leads — it's the 2-hour response window that kills conversions. Tested this properly with a firm and the difference was significant."),
+          ("Post about hiring intake staff", "We went a different direction for a client facing this — automated the intake side instead. Saved them $4k/month in staffing and honestly handled more volume. Happy to share how if useful."),
+          ("Post about growing the firm", "Scaling intake without losing quality is the hardest part of PI growth. Most firms solve it by hiring more staff when the fix is usually in the systems underneath."),
+        ] %}
+        {% for topic, text in comments %}
+        <div class="border border-gray-200 rounded-lg p-3 hover:border-gray-300 transition-colors">
+          <p class="text-xs text-gray-500 mb-1.5 font-medium">{{ topic }}</p>
+          <p class="text-xs text-gray-700 leading-relaxed">{{ text }}</p>
+          <button type="button" onclick="copyText(this, `{{ text|replace('`','\\`') }}`)"
+            class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+            Copy
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
+        <strong>No posts?</strong> Mark done below — it'll skip to Day 3 (Connection Request) automatically.
+      </div>
+
+      <!-- D3: Connection request -->
+      {% elif stage == 'day3' %}
+      <p class="text-xs font-medium text-gray-700 mb-3">Send a connection request with a note:</p>
+      {% if lead.has_posts == 1 %}
+      {% set connect_msg = "Hey " ~ (lead.name.split()[0] if lead.name else '[Name]') ~ " — commented on your post earlier. Really resonated with what you shared. Worth connecting." %}
+      {% else %}
+      {% set connect_msg = "Hey " ~ (lead.name.split()[0] if lead.name else '[Name]') ~ " — came across " ~ (lead.company or 'your firm') ~ " while researching PI practices. Would love to connect." %}
+      {% endif %}
+      <div class="border border-gray-200 rounded-lg p-3 mb-3">
+        <p class="text-xs text-gray-700 leading-relaxed">{{ connect_msg }}</p>
+        <button type="button" onclick="copyText(this, `{{ connect_msg|replace('`','\\`') }}`)"
+          class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Copy
+        </button>
+      </div>
+      <p class="text-xs text-gray-400">LinkedIn → Connect → Add a note → paste above → Send</p>
+
+      <!-- D4: Company page -->
+      {% elif stage == 'day4' %}
+      <div class="p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
+        <p class="font-medium text-gray-700 mb-1">Engage with their company page</p>
+        <p>Search for <strong>{{ lead.company or lead.name }}</strong> on LinkedIn → Follow the company page → Like their most recent company post if there is one.</p>
+        <p class="mt-1 text-gray-400">Takes 2 minutes. Keeps you on their radar before the DM.</p>
+      </div>
+
+      <!-- D5: Cold email note -->
+      {% elif stage == 'day5' %}
+      <div class="p-3 bg-violet-50 rounded-lg text-xs text-violet-700">
+        <p class="font-medium mb-1">Send cold email via CRM</p>
+        <p>Go to <a href="/crm" class="underline">CRM</a> → find {{ lead.name }} → send Email 1 template. Then mark this done.</p>
+      </div>
+
+      <!-- D7: DM -->
+      {% elif stage == 'day7' %}
+      {% set first = lead.name.split()[0] if lead.name else '[Name]' %}
+      {% set dm = "Hey " ~ first ~ ", appreciate the connect.\n\nQuick question — when a potential client calls your firm at 9pm about an accident, what happens to that inquiry?\n\nWe build AI intake systems for PI firms — every call answered, every web inquiry responded to in 60 seconds, pre-qualified and booked automatically. Did this for a firm recently — intake conversion rate jumped significantly, zero cases missed after hours.\n\nI have a 2-min demo. Worth 15 minutes to see if it fits?" %}
+      <div class="flex items-center gap-3 mb-3 p-3 bg-gray-50 rounded-lg">
+        <span class="text-xs text-gray-600">Are you connected?</span>
+        <button type="button" onclick="setConnected({{ lead.lead_id }}, this)"
+          class="px-3 py-1 text-xs rounded-lg border transition-colors {{ 'bg-green-600 text-white border-green-600' if lead.connected else 'border-gray-300 text-gray-600 hover:bg-green-50' }}">
+          {{ 'Connected ✓' if lead.connected else 'Mark Connected' }}
+        </button>
+      </div>
+      {% if lead.connected %}
+      <p class="text-xs font-medium text-gray-700 mb-2">Send this DM:</p>
+      <div class="border border-gray-200 rounded-lg p-3 mb-2">
+        <p class="text-xs text-gray-700 whitespace-pre-line leading-relaxed">{{ dm }}</p>
+        <button type="button" onclick="copyText(this, `{{ dm|replace('`','\\`')|replace('\n','\\n') }}`)"
+          class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Copy
+        </button>
+      </div>
+      {% else %}
+      <p class="text-xs text-gray-400">Mark yourself as connected first, then the DM will appear.</p>
+      {% endif %}
+
+      <!-- D10: Follow-up -->
+      {% elif stage == 'day10' %}
+      {% set first = lead.name.split()[0] if lead.name else '[Name]' %}
+      {% set followup = "Hey " ~ first ~ " — bumping this in case it got buried.\n\nNot pushing — genuinely curious: is after-hours intake response something you're actively working on, or already solved?" %}
+      <p class="text-xs font-medium text-gray-700 mb-2">Follow-up DM:</p>
+      <div class="border border-gray-200 rounded-lg p-3 mb-2">
+        <p class="text-xs text-gray-700 whitespace-pre-line leading-relaxed">{{ followup }}</p>
+        <button type="button" onclick="copyText(this, `{{ followup|replace('`','\\`')|replace('\n','\\n') }}`)"
+          class="mt-2 text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+          Copy
+        </button>
+      </div>
+      {% endif %}
+
+      <!-- Action buttons -->
+      <div class="flex items-center gap-2 mt-4 pt-3 border-t border-gray-100">
+        <button type="button" onclick="markDone({{ lead.lead_id }}, '{{ stage }}')"
+          id="done-{{ lead.lead_id }}"
+          class="px-4 py-2 bg-gray-900 text-white text-xs rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Done — advance to {{ stage_label.get(({'day1':'day2','day2':'day3','day3':'day4','day4':'day5','day5':'day7','day7':'day10','day10':'done'})[stage], 'done') }}
+        </button>
+        <span id="status-{{ lead.lead_id }}" class="text-xs text-gray-400"></span>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+  {% endfor %}
+  {% endif %}
+</div>
+{% endfor %}
+
+{% endif %}
+
+{% endblock %}
+{% block scripts %}
+<script>
+async function markDone(leadId, stage) {
+  const btn = document.getElementById(`done-${leadId}`);
+  const status = document.getElementById(`status-${leadId}`);
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const hasPosts = getHasPosts(leadId);
+  const res  = await fetch('/api/linkedin/action', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({lead_id: leadId, action: 'done', has_posts: hasPosts})
+  });
+  const data = await res.json();
+  if (data.ok) {
+    const card = document.getElementById(`lead-${leadId}`);
+    card.style.transition = 'opacity 0.4s';
+    card.style.opacity = '0';
+    // Reload page — backend moved lead to new stage, DOM needs refresh
+    // Stay on same stage (or auto-advance if now empty)
+    const panel = document.getElementById('stage-' + stage);
+    const remaining = panel ? panel.querySelectorAll('[id^="lead-"]').length - 1 : 0;
+    if (remaining > 0) {
+      sessionStorage.setItem('li_stage', stage);
+    }
+    // else: let auto-select pick next non-empty stage
+    setTimeout(() => location.reload(), 500);
+  } else {
+    status.textContent = 'Error — try again';
+    btn.disabled = false;
+    btn.textContent = 'Done';
+  }
+}
+
+async function removeLead(leadId) {
+  if (!confirm('Remove this lead from the LinkedIn pipeline?')) return;
+  await fetch('/api/linkedin/action', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({lead_id: leadId, action: 'remove'})
+  });
+  const card = document.getElementById(`lead-${leadId}`);
+  if (card) { card.style.opacity = '0'; setTimeout(() => location.reload(), 300); }
+}
+
+async function setHasPosts(leadId, val, btn) {
+  // Update button states visually
+  const btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(b => b.className = b.className.replace('bg-green-600 text-white border-green-600','border-gray-300 text-gray-600').replace('bg-red-500 text-white border-red-500','border-gray-300 text-gray-600'));
+  if (val) btn.className = btn.className.replace('border-gray-300 text-gray-600','bg-green-600 text-white border-green-600');
+  else btn.className = btn.className.replace('border-gray-300 text-gray-600','bg-red-500 text-white border-red-500');
+
+  btn.closest('[id^="lead-"]').dataset.hasPosts = val ? '1' : '0';
+
+  // Update Done button label to reflect skip
+  const doneBtn = document.getElementById(`done-${leadId}`);
+  if (doneBtn) {
+    if (!val) {
+      doneBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Done — skip D2, advance to D3 · Connect';
+    } else {
+      doneBtn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Done — advance to D2 · Comment';
+    }
+  }
+
+  await fetch('/api/linkedin/action', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({action: 'update', lead_id: leadId, has_posts: val})
+  });
+}
+
+async function setConnected(leadId, btn) {
+  btn.className = btn.className.replace('border-gray-300 text-gray-600 hover:bg-green-50','bg-green-600 text-white border-green-600');
+  btn.textContent = 'Connected ✓';
+  await fetch('/api/linkedin/action', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({action: 'update', lead_id: leadId, connected: true})
+  });
+}
+
+async function setConnectedBar(leadId, btn) {
+  // Toggle connected state
+  const isConnected = btn.classList.contains('bg-green-600');
+  if (isConnected) return; // already connected, don't toggle off
+  btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Connected';
+  btn.className = btn.className.replace('border-gray-300 text-gray-500 hover:bg-green-50 hover:border-green-400 hover:text-green-700', 'bg-green-600 text-white border-green-600');
+  const bar = document.getElementById(`cn-bar-${leadId}`);
+  if (bar) {
+    bar.innerHTML += `<svg class="w-3 h-3 text-gray-300 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+    <button type="button" onclick="markVoiceNote(${leadId}, true, this)" id="vn-btn-${leadId}"
+      class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium border-violet-300 text-violet-600 hover:bg-violet-50">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+      Mark Voice Note Sent
+    </button>
+    <span class="text-xs text-violet-400">— send voice note now, then mark it</span>`;
+  }
+  await fetch('/api/linkedin/action', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({action: 'update', lead_id: leadId, connected: true})
+  });
+}
+
+async function markVoiceNote(leadId, sent, btn) {
+  const res = await fetch('/api/linkedin/voice-note', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({lead_id: leadId, sent: sent})
+  });
+  const data = await res.json();
+  if (data.ok) {
+    if (sent) {
+      const today = new Date().toISOString().slice(0,10);
+      btn.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Voice note sent ${today}`;
+      btn.className = btn.className.replace(/border-violet-300 text-violet-600 hover:bg-violet-50/,'bg-violet-600 text-white border-violet-600');
+      // Update bar colour + show due dates
+      const bar = document.getElementById(`cn-bar-${leadId}`);
+      if (bar) {
+        bar.className = bar.className.replace('bg-gray-50 border-gray-100','bg-violet-50 border-violet-100');
+        const dueEl = document.getElementById(`vn-due-${leadId}`);
+        if (dueEl) {
+          dueEl.textContent = 'D3 text in 3d · D7 video in 7d';
+        } else {
+          const span = document.createElement('span');
+          span.className = 'text-xs text-gray-400 ml-1';
+          span.id = `vn-due-${leadId}`;
+          span.textContent = 'D3 text in 3d · D7 video in 7d';
+          bar.appendChild(span);
+        }
+      }
+    }
+  }
+}
+
+function getHasPosts(leadId) {
+  const card = document.getElementById(`lead-${leadId}`);
+  if (!card) return null;
+  const v = card.dataset.hasPosts;
+  if (v === '1') return true;
+  if (v === '0') return false;
+  return null;
+}
+
+// Profile view tracker (localStorage, resets daily)
+const PV_LIMIT = 70;
+function _pvData() {
+  const today = new Date().toDateString();
+  const d = JSON.parse(localStorage.getItem('li_pv') || '{"date":"","count":0}');
+  if (d.date !== today) return {date: today, count: 0};
+  return d;
+}
+function getPV() { return _pvData().count; }
+function incPV() {
+  const d = _pvData(); d.count++;
+  localStorage.setItem('li_pv', JSON.stringify(d));
+  const pct = Math.min((d.count / PV_LIMIT) * 100, 100);
+  const bar = document.getElementById('pv-bar');
+  const lbl = document.getElementById('pv-label');
+  if (bar) bar.style.width = pct + '%';
+  if (bar) bar.className = 'h-1.5 rounded-full ' + (pct >= 80 ? 'bg-red-500' : 'bg-teal-500');
+  if (lbl) { lbl.textContent = d.count + '/' + PV_LIMIT; lbl.className = 'text-xs mono ' + (pct >= 80 ? 'text-red-600 font-semibold' : 'text-gray-600'); }
+}
+(function initPV() {
+  const c = getPV();
+  const pct = Math.min((c / PV_LIMIT) * 100, 100);
+  const bar = document.getElementById('pv-bar');
+  const lbl = document.getElementById('pv-label');
+  if (bar) bar.style.width = pct + '%';
+  if (lbl) lbl.textContent = c + '/' + PV_LIMIT;
+})();
+
+// Multi-timezone clocks + window status
+(function clocks() {
+  function fmt(date) {
+    const h = date.getHours(), m = date.getMinutes(), s = date.getSeconds();
+    const ap = h >= 12 ? 'PM' : 'AM', hh = h % 12 || 12;
+    return hh + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0') + ' ' + ap;
+  }
+  function windowStatus(cdtHour, cdtMin) {
+    const t = cdtHour + cdtMin / 60;
+    if (t >= 8 && t < 11)  return { text: '🟢 Prime window — US morning active', cls: 'bg-green-50 text-green-700 border-green-200' };
+    if (t >= 11 && t < 14) return { text: '🔵 Good — US lunch hour', cls: 'bg-blue-50 text-blue-700 border-blue-200' };
+    if (t >= 14 && t < 17) return { text: '🟡 OK — US afternoon', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+    if (t >= 17 && t < 19) return { text: '🟠 Slow — US end of day', cls: 'bg-orange-50 text-orange-700 border-orange-200' };
+    return { text: '⚫ Off hours — US not active', cls: 'bg-gray-100 text-gray-500 border-gray-200' };
+  }
+  function tick() {
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    const ist = new Date(utc + 5.5  * 3600000);  // UTC+5:30
+    const cdt = new Date(utc - 5    * 3600000);  // UTC-5 (Texas summer)
+    const edt = new Date(utc - 4    * 3600000);  // UTC-4 (FL/GA summer)
+    const istEl = document.getElementById('ist-time');
+    const cdtEl = document.getElementById('cdt-time');
+    const edtEl = document.getElementById('edt-time');
+    const badge = document.getElementById('window-badge');
+    if (istEl) istEl.textContent = fmt(ist);
+    if (cdtEl) cdtEl.textContent = fmt(cdt);
+    if (edtEl) edtEl.textContent = fmt(edt);
+    if (badge) {
+      const ws = windowStatus(cdt.getHours(), cdt.getMinutes());
+      badge.textContent = ws.text;
+      badge.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ' + ws.cls;
+    }
+  }
+  tick();
+  setInterval(tick, 1000);
+})();
+
+// Session timer
+(function startTimer() {
+  const start = Date.now();
+  setInterval(() => {
+    const s = Math.floor((Date.now() - start) / 1000);
+    const m = Math.floor(s / 60), ss = s % 60;
+    const el = document.getElementById('session-timer');
+    if (el) el.textContent = 'session ' + m + ':' + String(ss).padStart(2,'0');
+  }, 1000);
+})();
+
+// Checklist toggle
+function toggleChecklist() {
+  const p = document.getElementById('checklist-panel');
+  p.classList.toggle('hidden');
+}
+
+function copyLiUrl(url, btn) {
+  incPV();
+  const parts = url.split('/in/');
+  const username = parts.length > 1 ? parts[1].replace(/\/$/, '') : url;
+  navigator.clipboard.writeText(username);
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Copied!'
+
+  btn.className = btn.className.replace('text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100','text-green-600 bg-green-50');
+  setTimeout(() => { btn.innerHTML = orig; btn.className = btn.className.replace('text-green-600 bg-green-50','text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100'); }, 2000);
+}
+
+function copyVoiceNote(firstName, company, btn) {
+  const script = `Hey ${firstName} — Ayaan here.\n\nWe only take on one or two firms a month — and ${company} is on my radar this month.\n\nI build AI intake systems that handle after-hours case inquiries — every call answered automatically, every web form responded to in under 60 seconds, cases pre-qualified before an attorney needs to get involved.\n\nThe firms we work with are recovering cases they didn't even know they were losing.\n\nCurious how ${company} currently handles calls that come in after hours.`;
+  navigator.clipboard.writeText(script);
+  const orig = btn.innerHTML;
+  btn.innerHTML = '✓ Copied!';
+  btn.className = btn.className.replace('text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100','text-green-600 bg-green-50');
+  setTimeout(() => { btn.innerHTML = orig; btn.className = btn.className.replace('text-green-600 bg-green-50','text-violet-600 hover:text-violet-800 bg-violet-50 hover:bg-violet-100'); }, 2000);
+}
+
+function copyText(btn, text) {
+  navigator.clipboard.writeText(text.replace(/\\n/g, '\n'));
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg> Copied!';
+  btn.className = btn.className.replace('text-indigo-600 hover:text-indigo-800','text-green-600');
+  setTimeout(() => { btn.innerHTML = orig; btn.className = btn.className.replace('text-green-600','text-indigo-600 hover:text-indigo-800'); }, 2000);
+}
+
+
+const STAGE_ORDER = ['day1','day2','day3','day4','day5','day7','day10'];
+
+function switchStage(stage, skipEmpty) {
+  const panel = document.getElementById('stage-' + stage);
+  if (!panel) return;
+
+  // If empty and navigating forward, jump to next stage with leads
+  const hasLeads = panel.querySelectorAll('[id^="lead-"]').length > 0;
+  if (!hasLeads && skipEmpty !== false) {
+    const idx = STAGE_ORDER.indexOf(stage);
+    for (let i = idx + 1; i < STAGE_ORDER.length; i++) {
+      const next = document.getElementById('stage-' + STAGE_ORDER[i]);
+      if (next && next.querySelectorAll('[id^="lead-"]').length > 0) {
+        switchStage(STAGE_ORDER[i], false);
+        return;
+      }
+    }
+    // No next stage has leads — show this one (empty state)
+  }
+
+  // Hide all panels
+  STAGE_ORDER.forEach(s => {
+    const el = document.getElementById('stage-' + s);
+    if (el) el.classList.add('hidden');
+  });
+  panel.classList.remove('hidden');
+  setActiveNav(stage);
+}
+
+function setActiveNav(stage) {
+  document.querySelectorAll('.stage-nav-btn').forEach(b => {
+    b.className = b.className.replace('bg-gray-900 text-white','text-gray-500 hover:bg-gray-100');
+    const cnt = b.querySelector('.stage-nav-count');
+    if (cnt) cnt.className = cnt.className.replace('bg-gray-700 text-gray-200','bg-gray-100 text-gray-600');
+    const dot = b.querySelector('.w-1\\.5.h-1\\.5.rounded-full');
+    if (dot) dot.className = dot.className.replace('bg-gray-500','bg-gray-200');
+  });
+  const active = document.getElementById('nav-' + stage);
+  if (!active) return;
+  active.className = active.className.replace('text-gray-500 hover:bg-gray-100','bg-gray-900 text-white');
+  const cnt = active.querySelector('.stage-nav-count');
+  if (cnt) cnt.className = cnt.className.replace('bg-gray-100 text-gray-600','bg-gray-700 text-gray-200');
+  const dot = active.querySelector('.w-1\\.5');
+  if (dot) dot.className = dot.className.replace('bg-gray-200','bg-gray-500');
+}
+
+// On load: restore saved stage or show first stage with leads
+(function() {
+  const saved = sessionStorage.getItem('li_stage');
+  sessionStorage.removeItem('li_stage');
+  if (saved) {
+    const panel = document.getElementById('stage-' + saved);
+    if (panel && panel.querySelectorAll('[id^="lead-"]').length > 0) {
+      switchStage(saved, false);
+      return;
+    }
+  }
+  const first = STAGE_ORDER.find(s => {
+    const el = document.getElementById('stage-' + s);
+    return el && el.querySelectorAll('[id^="lead-"]').length > 0;
+  }) || 'day1';
+  switchStage(first, false);
+})();
+</script>
+{% endblock %}

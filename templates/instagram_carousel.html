@@ -1,0 +1,355 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-xl font-semibold">Carousel Generator</h1>
+    <p class="text-xs text-gray-400 mt-0.5">Pick a carousel day → edit slide copy → render 6 static 1080×1350 PNG slides</p>
+  </div>
+  <a href="/instagram" class="text-xs text-gray-400 hover:text-gray-700">← Content scripts</a>
+</div>
+
+<div class="grid grid-cols-3 gap-5">
+
+  <!-- LEFT: New render form -->
+  <div class="col-span-2 space-y-4">
+
+    <!-- Step 1: Pick day -->
+    <div class="bg-white border border-gray-200 rounded-xl p-5">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Step 1 — Pick the carousel day</div>
+      <!-- Pinned carousels (keys ≤ 0) — pin all three to LinkedIn -->
+      {% set pin_labels = {-2: "About Us", -1: "What We Do", 0: "Authority — Who We Are"} %}
+      {% set pin_subs   = {-2: "Who builds it · How we work · What makes us different", -1: "4-week build · Week by week · Exactly what's included", 0: "Who we are · Why PI only · Why 1–2 firms/month"} %}
+      {% for d in props.keys()|sort %}
+      {% if d <= 0 %}
+      <button onclick="selectDay({{ d }})" id="daybtn-{{ d }}"
+        class="w-full rounded-xl border-2 px-3 py-2.5 text-left mb-2 transition-colors cursor-pointer border-yellow-400 bg-yellow-50 hover:bg-yellow-100">
+        <div class="flex items-center gap-2">
+          <span class="text-sm">⭐</span>
+          <div>
+            <div class="text-[11px] font-bold text-yellow-800">PIN — {{ pin_labels.get(d, titles[d]) }}</div>
+            <div class="text-[10px] text-yellow-700">{{ pin_subs.get(d, '') }}</div>
+          </div>
+        </div>
+      </button>
+      {% endif %}
+      {% endfor %}
+      <!-- Day grid (keys > 0) -->
+      <div class="grid grid-cols-5 gap-2 mt-1">
+        {% for d in props.keys()|sort %}
+        {% if d > 0 %}
+        <button onclick="selectDay({{ d }})" id="daybtn-{{ d }}"
+          class="rounded-xl border-2 px-2 py-3 text-center transition-colors cursor-pointer border-gray-200 bg-white text-gray-600 hover:border-gray-400">
+          <div class="text-[10px] font-bold text-gray-700 mb-1">D{{ d }}</div>
+          <div class="text-[9px] text-gray-400 leading-tight">{{ titles[d] }}</div>
+        </button>
+        {% endif %}
+        {% endfor %}
+      </div>
+      <div id="day-summary" class="mt-3 flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 text-xs text-gray-600">
+        <span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">Carousel</span>
+        <span id="day-summary-label" class="font-medium text-gray-800">Select a day</span>
+      </div>
+    </div>
+
+    <!-- Step 2: Edit slide copy -->
+    <div class="bg-white border border-gray-200 rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Step 2 — Slide copy (optional edits)</div>
+        <span class="text-xs text-gray-400">Pre-filled from the day's script</span>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-gray-500 mb-1 block">Slide 1 — Hook Stat</label>
+          <input id="prop-hookStat" type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 mb-1 block">Slide 1 — Hook Label</label>
+          <input id="prop-hookLabel" type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs text-gray-500 mb-1 block">Slide 2 — Problem statement</label>
+          <input id="prop-lowerThird" type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs text-gray-500 mb-1 block">Slides 3+ — Results <span class="text-gray-300">(one per line, one slide each)</span></label>
+          <textarea id="prop-results" rows="3" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400 resize-none"></textarea>
+        </div>
+        <div class="col-span-2">
+          <label class="text-xs text-gray-500 mb-1 block">Final slide — CTA</label>
+          <input id="prop-ctaText" type="text" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+      </div>
+      <div class="mt-3 text-xs text-gray-400" id="slide-count-preview"></div>
+    </div>
+
+    <!-- Theme -->
+    <div class="bg-white border border-gray-200 rounded-xl p-5">
+      <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 block">Theme</label>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="flex items-center gap-3 border-2 border-gray-900 rounded-xl p-3 cursor-pointer" id="theme-dark-label">
+          <input type="radio" name="theme" value="dark" id="theme-dark" checked class="accent-gray-900">
+          <div class="w-8 h-8 rounded-lg bg-[#05070d] border border-gray-700 flex-shrink-0"></div>
+          <span class="text-sm font-medium text-gray-800">Dark</span>
+        </label>
+        <label class="flex items-center gap-3 border-2 border-gray-200 rounded-xl p-3 cursor-pointer" id="theme-light-label">
+          <input type="radio" name="theme" value="light" id="theme-light" class="accent-gray-900">
+          <div class="w-8 h-8 rounded-lg bg-white border border-gray-300 flex-shrink-0"></div>
+          <span class="text-sm font-medium text-gray-800">White</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Render button -->
+    <button onclick="startRender()" id="render-btn" disabled
+      class="w-full py-3.5 bg-gray-900 text-white rounded-xl font-semibold text-sm hover:bg-gray-700 transition-colors disabled:opacity-40">
+      Generate Carousel →
+    </button>
+
+    <div class="flex items-center gap-3 text-xs text-gray-400 px-1">
+      <span>① pick day</span><span class="text-gray-200">→</span>
+      <span>② edit copy</span><span class="text-gray-200">→</span>
+      <span>③ Remotion renders PNG slides</span><span class="text-gray-200">→</span>
+      <span>④ download zip</span>
+    </div>
+
+    <!-- Last generated preview -->
+    <div id="last-carousel-preview" class="{% if not last_job_id %}hidden {% endif %}bg-white border border-gray-200 rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide" id="preview-label">
+          {% if last_job %}Last Generated — D{{ last_job.day }} · {{ last_job.title }}{% endif %}
+        </div>
+        <a id="preview-download" href="{% if last_job_id %}/instagram/carousel/download/{{ last_job_id }}{% else %}#{% endif %}"
+           class="text-xs px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+          Download .zip
+        </a>
+      </div>
+      <div id="preview-strip" class="flex gap-2 overflow-x-auto pb-1">
+        {% if last_job_id and last_job %}
+          {% for i in range(last_job.slide_count) %}
+          <img src="/instagram/carousel/slide/{{ last_job_id }}/slide_{{ i }}.png"
+               class="h-44 w-auto rounded-lg border border-gray-100 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity"
+               onclick="window.open(this.src,'_blank')" />
+          {% endfor %}
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Active render status -->
+    <div id="render-status" class="hidden bg-white border border-gray-200 rounded-xl p-5">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-sm font-semibold text-gray-800" id="status-title">Rendering...</div>
+        <span id="status-badge" class="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">rendering</span>
+      </div>
+      <div class="w-full bg-gray-100 rounded-full h-1.5 mb-3">
+        <div id="status-bar" class="h-1.5 rounded-full bg-indigo-500 transition-all" style="width:5%"></div>
+      </div>
+      <pre id="status-log" class="text-xs text-gray-500 bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">Starting...</pre>
+      <div id="download-section" class="hidden mt-3 flex items-center gap-3">
+        <a id="download-link" href="#" class="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Download All (.zip — slides + PDF)
+        </a>
+        <span class="text-xs text-gray-400">Ready to upload to Instagram as a carousel</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT: This session's jobs + info -->
+  <div class="space-y-3">
+
+    {% if jobs %}
+    <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-gray-100">
+        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">This Session</span>
+      </div>
+      <div class="divide-y divide-gray-50">
+        {% for jid, job in jobs.items() %}
+        <div class="px-4 py-3">
+          <div class="flex items-center justify-between">
+            <div class="text-xs font-medium text-gray-700">D{{ job.day }} — {{ job.title }}</div>
+            <span class="px-2 py-0.5 rounded-full text-xs font-medium
+              {% if job.status == 'done' %}bg-green-100 text-green-700
+              {% elif job.status == 'error' %}bg-red-100 text-red-700
+              {% else %}bg-blue-100 text-blue-700{% endif %}">{{ job.status }}</span>
+          </div>
+          <div class="text-xs text-gray-400 mt-0.5">{{ job.started_at }} · {{ job.slide_count }} slides</div>
+          {% if job.status == 'done' %}
+          <a href="/instagram/carousel/download/{{ jid }}" class="inline-block mt-2 text-xs px-2.5 py-1 bg-green-600 text-white rounded-lg">Download All (.zip)</a>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="bg-violet-50 border border-violet-100 rounded-xl p-4 text-xs text-violet-800 space-y-2">
+      <div class="font-semibold text-violet-900 mb-1">Slide structure</div>
+      <div>① Hook — big stat + label</div>
+      <div>② Problem — bold standalone statement</div>
+      <div>③–⑤ Results — one benefit per slide</div>
+      <div>⑥ CTA — close with the ask</div>
+      <div class="pt-1 text-violet-600 border-t border-violet-200">1080×1350 (4:5) · static PNGs · ~20–30s to render</div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+let selectedDay = null;
+let activeJobId = null;
+let pollInterval = null;
+
+const PROPS  = {{ props  | tojson }};
+const TITLES = {{ titles | tojson }};
+
+function selectDay(d) {
+  for (const id in PROPS) {
+    const btn = document.getElementById('daybtn-' + id);
+    if (!btn) continue;
+    btn.classList.remove('border-gray-900','bg-gray-900','border-indigo-600','bg-indigo-600','text-white');
+    if (parseInt(id) <= 0) {
+      btn.classList.remove('border-gray-200','bg-white','text-gray-600','hover:border-gray-400');
+      btn.classList.add('border-yellow-400','bg-yellow-50','hover:bg-yellow-100');
+    } else {
+      btn.classList.remove('border-yellow-400','bg-yellow-50','hover:bg-yellow-100');
+      btn.classList.add('border-gray-200','bg-white','text-gray-600','hover:border-gray-400');
+    }
+  }
+  const chosen = document.getElementById('daybtn-' + d);
+  if (chosen) {
+    chosen.classList.remove(
+      'border-gray-200','bg-white','text-gray-600','hover:border-gray-400',
+      'border-yellow-400','bg-yellow-50','hover:bg-yellow-100','text-yellow-800','text-yellow-700'
+    );
+    chosen.classList.add('border-indigo-600','bg-indigo-600','text-white');
+  }
+
+  selectedDay = d;
+  const p = PROPS[String(d)];
+  if (!p) return;
+
+  document.getElementById('prop-hookStat').value   = p.hookStat   || '';
+  document.getElementById('prop-hookLabel').value  = p.hookLabel  || '';
+  document.getElementById('prop-lowerThird').value = p.lowerThird || '';
+  document.getElementById('prop-results').value    = (p.results || []).join('\n');
+  document.getElementById('prop-ctaText').value    = p.ctaText    || '';
+
+  document.getElementById('day-summary-label').textContent = 'D' + d + ' — ' + (TITLES[String(d)] || '');
+  updateSlideCount();
+  document.getElementById('render-btn').disabled = false;
+}
+
+function updateSlideCount() {
+  const resultLines = document.getElementById('prop-results').value.split('\n').filter(l => l.trim());
+  const total = 2 + resultLines.length + 1; // hook + problem + results + cta
+  document.getElementById('slide-count-preview').textContent = total + ' slides will be generated';
+}
+
+document.getElementById('prop-results').addEventListener('input', updateSlideCount);
+
+async function startRender() {
+  if (selectedDay === null) { alert('Pick a day first'); return; }
+
+  const btn = document.getElementById('render-btn');
+  btn.disabled = true;
+  btn.textContent = 'Rendering...';
+
+  const fd = new FormData();
+  fd.append('day',        selectedDay);
+  fd.append('theme',      document.querySelector('input[name="theme"]:checked').value);
+  fd.append('hookStat',   document.getElementById('prop-hookStat').value);
+  fd.append('hookLabel',  document.getElementById('prop-hookLabel').value);
+  fd.append('lowerThird', document.getElementById('prop-lowerThird').value);
+  fd.append('results',    document.getElementById('prop-results').value);
+  fd.append('ctaText',    document.getElementById('prop-ctaText').value);
+
+  const res  = await fetch('/instagram/carousel/generate', {method:'POST', body: fd});
+  const data = await res.json();
+
+  if (!data.ok) {
+    alert('Error: ' + data.error);
+    btn.disabled = false;
+    btn.textContent = 'Generate Carousel →';
+    return;
+  }
+
+  activeJobId = data.job_id;
+  document.getElementById('render-status').classList.remove('hidden');
+  document.getElementById('status-title').textContent =
+    'D' + selectedDay + ' — ' + (TITLES[String(selectedDay)] || '') + ' · rendering slides...';
+  document.getElementById('download-section').classList.add('hidden');
+  document.getElementById('status-bar').style.width = '5%';
+  document.getElementById('status-bar').className = 'h-1.5 rounded-full bg-indigo-500 transition-all';
+  pollInterval = setInterval(pollStatus, 1500);
+}
+
+async function pollStatus() {
+  if (!activeJobId) return;
+  const res  = await fetch('/instagram/carousel/status/' + activeJobId);
+  const data = await res.json();
+  if (!data.ok) return;
+
+  const log   = document.getElementById('status-log');
+  const badge = document.getElementById('status-badge');
+  const bar   = document.getElementById('status-bar');
+
+  log.textContent = data.log || '';
+  log.scrollTop   = 999999;
+
+  if (data.status === 'rendering') {
+    badge.textContent = 'rendering';
+    badge.className = 'px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700';
+    const w = parseInt(bar.style.width) || 5;
+    bar.style.width = Math.min(w + 4, 90) + '%';
+  } else if (data.status === 'done') {
+    clearInterval(pollInterval);
+    badge.textContent = 'done ✓';
+    badge.className = 'px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700';
+    bar.style.width = '100%';
+    bar.className = 'h-1.5 rounded-full bg-green-500 transition-all';
+    document.getElementById('status-title').textContent = '✓ ' + data.slide_count + ' slides rendered';
+    document.getElementById('download-link').href = '/instagram/carousel/download/' + activeJobId;
+    document.getElementById('download-section').classList.remove('hidden');
+    document.getElementById('render-btn').disabled = false;
+    document.getElementById('render-btn').textContent = 'Generate Another →';
+    showLastPreview(activeJobId, data.day, data.title, data.slide_count);
+  } else if (data.status === 'error') {
+    clearInterval(pollInterval);
+    badge.textContent = 'error';
+    badge.className = 'px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700';
+    document.getElementById('render-btn').disabled = false;
+    document.getElementById('render-btn').textContent = 'Retry →';
+  }
+}
+
+function showLastPreview(jid, day, title, slideCount) {
+  const strip = document.getElementById('preview-strip');
+  const label = document.getElementById('preview-label');
+  const dlLink = document.getElementById('preview-download');
+  strip.innerHTML = '';
+  for (let i = 0; i < slideCount; i++) {
+    const img = document.createElement('img');
+    img.src = '/instagram/carousel/slide/' + jid + '/slide_' + i + '.png';
+    img.className = 'h-44 w-auto rounded-lg border border-gray-100 flex-shrink-0 cursor-pointer hover:opacity-80 transition-opacity';
+    img.onclick = () => window.open(img.src, '_blank');
+    strip.appendChild(img);
+  }
+  label.textContent = 'Last Generated — D' + day + ' · ' + (title || '');
+  dlLink.href = '/instagram/carousel/download/' + jid;
+  document.getElementById('last-carousel-preview').classList.remove('hidden');
+}
+
+document.querySelectorAll('input[name="theme"]').forEach(input => {
+  input.addEventListener('change', () => {
+    document.getElementById('theme-dark-label').className =
+      'flex items-center gap-3 border-2 rounded-xl p-3 cursor-pointer ' + (input.value === 'dark' ? 'border-gray-900' : 'border-gray-200');
+    document.getElementById('theme-light-label').className =
+      'flex items-center gap-3 border-2 rounded-xl p-3 cursor-pointer ' + (input.value === 'light' ? 'border-gray-900' : 'border-gray-200');
+  });
+});
+</script>
+{% endblock %}

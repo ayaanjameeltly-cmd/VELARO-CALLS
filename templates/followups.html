@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-lg font-medium mb-1">Follow-ups</h1>
+<p class="text-sm text-gray-500 mb-6">Leads that need action today</p>
+
+{% macro lead_row(lead, reason, urgency) %}
+<a href="/leads/{{ lead['id'] }}" class="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 -mx-4 px-4 rounded transition-colors">
+  <div class="flex items-center gap-3">
+    <div class="w-1.5 h-8 rounded-full {{ 'bg-red-500' if urgency=='high' else 'bg-amber-400' }}"></div>
+    <div>
+      <div class="font-medium text-sm">{{ lead['name'] }}</div>
+      <div class="text-xs text-gray-400">{{ lead['company'] or '—' }}</div>
+    </div>
+  </div>
+  <div class="flex items-center gap-3">
+    <span class="text-xs text-gray-500">{{ reason }}</span>
+    <span class="text-xs px-2 py-0.5 rounded-full stage-{{ lead['pipeline_stage'] }}">{{ lead['pipeline_stage'] }}</span>
+    <span class="text-xs text-gray-400">Last: {{ lead['last_action'][:10] if lead['last_action'] else 'never' }}</span>
+    <span class="text-blue-600 text-xs">→</span>
+  </div>
+</a>
+{% endmacro %}
+
+{% if not overdue and not unreplied and not stale %}
+<div class="bg-white rounded-xl border border-gray-100 p-12 text-center">
+  <div class="text-2xl mb-2">🎉</div>
+  <div class="text-gray-500">All caught up! No follow-ups needed.</div>
+</div>
+{% endif %}
+
+{% if overdue %}
+<div class="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+  <div class="flex items-center gap-2 mb-3">
+    <div class="w-2 h-2 bg-amber-400 rounded-full"></div>
+    <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Pipeline overdue — no action in 2+ days</span>
+    <span class="mono text-xs text-gray-400 ml-auto">{{ overdue|length }}</span>
+  </div>
+  {% for lead in overdue %}{{ lead_row(lead, 'Move to next stage', 'medium') }}{% endfor %}
+</div>
+{% endif %}
+
+{% if unreplied %}
+<div class="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+  <div class="flex items-center gap-2 mb-3">
+    <div class="w-2 h-2 bg-yellow-500 rounded-full"></div>
+    <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Replied — not followed up in 2+ days</span>
+    <span class="mono text-xs text-gray-400 ml-auto">{{ unreplied|length }}</span>
+  </div>
+  {% for lead in unreplied %}{{ lead_row(lead, 'Book call or handle objection', 'high') }}{% endfor %}
+</div>
+{% endif %}
+
+{% if stale %}
+<div class="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+  <div class="flex items-center gap-2 mb-3">
+    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+    <span class="text-xs font-medium uppercase tracking-wide text-gray-500">Proposal — no response in 5+ days</span>
+    <span class="mono text-xs text-gray-400 ml-auto">{{ stale|length }}</span>
+  </div>
+  {% for lead in stale %}{{ lead_row(lead, 'Follow up on proposal', 'high') }}{% endfor %}
+</div>
+{% endif %}
+{% endblock %}

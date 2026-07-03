@@ -1,0 +1,36 @@
+# Secrets — never commit
+.env
+*.env
+
+# Database — stays on server, migrated manually
+velaro.db
+velaro.db-shm
+velaro.db-wal
+
+# Logs
+logs/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+
+# Remotion (large node_modules)
+remotion/node_modules/
+remotion/.cache/
+
+# Mac
+.DS_Store
+
+# Misc
+*.csv
+videos/
+gmail_accounts.json
+static/uploads/
+static/last-props.json
+static/carousel_renders/
+static/story_renders/
+*.mp4
+*.mov

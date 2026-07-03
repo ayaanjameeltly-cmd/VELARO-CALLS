@@ -1,0 +1,532 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-lg font-medium mb-1">Playbook — PI Law</h1>
+<p class="text-sm text-gray-500 mb-6">Lead sources, daily targets, organic strategy, warm-up schedule</p>
+
+<div class="space-y-4">
+
+<!-- The Offer -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">The Offer — AI Revenue Engine for PI Law</div>
+  <div class="bg-gray-50 rounded-lg p-4 mb-4">
+    <p class="text-sm font-medium text-gray-800">"We run Meta ads to bring leads in and AI systems that follow up every lead in 60 seconds — PI firms 2–3x their case intake on the same ad spend."</p>
+  </div>
+  <div class="grid grid-cols-3 gap-3 text-xs mb-3">
+    {% for tier, setup, monthly in [('Solo / 2–5 attorneys','$8k–$12k setup','$2.5k–$3.5k/mo'),('Mid-size 5–15 attorneys','$12k–$18k setup','$3.5k–$5k/mo'),('15–30 attorneys','$18k–$25k setup','$5k–$7k/mo')] %}
+    <div class="border border-gray-200 rounded-lg p-3">
+      <p class="font-medium text-gray-700 mb-1">{{ tier }}</p>
+      <p class="text-green-700 font-medium">{{ setup }}</p>
+      <p class="text-gray-500">{{ monthly }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="bg-purple-50 border border-purple-100 rounded-lg px-3 py-2 text-xs text-purple-800">
+    AI Systems only (client already runs ads): $8k–$15k setup · $2.5k–$4.5k/month
+  </div>
+</div>
+
+<!-- Daily Lead Targets -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Daily Lead Targets — The Numbers</div>
+  <div class="grid grid-cols-4 gap-3 text-xs mb-4">
+    {% for label, num, sub, color in [
+      ('New leads scraped/found','20/day','~500/month','blue'),
+      ('Apollo exports','50/day','free tier max','green'),
+      ('Qualified leads (7+ score)','8–10/day','enter pipeline','purple'),
+      ('Active in pipeline at once','100–150','across all stages','orange'),
+    ] %}
+    <div class="text-center p-3 bg-gray-50 rounded-lg border border-gray-100">
+      <div class="text-lg font-semibold mono {{ 'text-blue-600' if color=='blue' else 'text-green-600' if color=='green' else 'text-purple-600' if color=='purple' else 'text-orange-500' }}">{{ num }}</div>
+      <div class="text-xs font-medium text-gray-700 mt-0.5">{{ label }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">{{ sub }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+    ⚠ Your LinkedIn is brand new. Do NOT send connection requests for the first 2 weeks. Like and comment only. Rushing this gets your account flagged or restricted.
+  </div>
+</div>
+
+<!-- LinkedIn New Account Warm-up -->
+<div class="bg-white rounded-xl border border-blue-100 p-5">
+  <div class="text-xs font-medium uppercase tracking-wide text-blue-400 mb-3">LinkedIn New Account Warm-up — Follow This Exactly</div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-xs">
+      <thead>
+        <tr class="text-gray-400 border-b border-gray-100">
+          <th class="text-left py-1.5 pr-4">Week</th>
+          <th class="text-right py-1.5 px-3">Connections/day</th>
+          <th class="text-right py-1.5 px-3">DMs/day</th>
+          <th class="text-right py-1.5 px-3">Comments/day</th>
+          <th class="text-right py-1.5 px-3">Likes/day</th>
+          <th class="text-left py-1.5 pl-3">Notes</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+        {% for row in [
+          ('Week 1–2','0','0','10–15','30–50','Zero connections. Only like and comment. Profile must be 100% complete first.'),
+          ('Week 3','10/day','0','15–20','50–60','Start connections slowly. Only to 2nd-degree with mutual connections.'),
+          ('Week 4','15/day','5–10','20–25','60–80','DM only accepted connections from week 3.'),
+          ('Month 2','20/day','25–35','20–25','70–80','Normal pace. Never more than 20 requests in one session.'),
+          ('Month 3+','20–25/day','40–60','25–30','80–100','Full volume. Watch weekly limit (~200 connections/wk max).'),
+        ] %}
+        <tr>
+          <td class="py-1.5 pr-4 font-medium text-gray-700">{{ row[0] }}</td>
+          <td class="py-1.5 px-3 text-right mono {{ 'text-red-500' if row[1]=='0' else 'text-green-600' }}">{{ row[1] }}</td>
+          <td class="py-1.5 px-3 text-right mono {{ 'text-red-500' if row[2]=='0' else 'text-blue-600' }}">{{ row[2] }}</td>
+          <td class="py-1.5 px-3 text-right mono text-green-600">{{ row[3] }}</td>
+          <td class="py-1.5 px-3 text-right mono text-gray-500">{{ row[4] }}</td>
+          <td class="py-1.5 pl-3 text-gray-400">{{ row[5] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="mt-3 grid grid-cols-3 gap-3 text-xs">
+    {% for tip in [
+      ('Profile must be complete','Headshot, banner, headline, about section, 3+ experience entries. Incomplete profiles get ignored and flagged.'),
+      ('Spread actions over 3 hours','Never do 20 comments in 20 minutes. Spread across your outreach block. LinkedIn detects bot-like bursts.'),
+      ('2nd degree connections only','Mutual connections make the request warmer and less likely to be marked spam. Ignore 3rd+ for now.'),
+    ] %}
+    <div class="bg-blue-50 rounded-lg p-2.5">
+      <p class="font-medium text-blue-800 mb-1">{{ tip[0] }}</p>
+      <p class="text-blue-600">{{ tip[1] }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Lead Source 1: Apollo -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-xs font-medium uppercase tracking-wide text-gray-400">Lead Source 1 — Apollo.io</div>
+    <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">FREE · 50 exports/day · PRIMARY SOURCE</span>
+  </div>
+  <div class="grid grid-cols-2 gap-6 text-xs">
+    <div>
+      <p class="font-medium text-gray-700 mb-2">People search — run one title at a time:</p>
+      <div class="space-y-1 mb-4">
+        {% for t in ['Personal Injury Attorney','Personal Injury Lawyer','Managing Partner','Founding Partner','Trial Attorney','Trial Lawyer'] %}
+        <div class="flex items-center justify-between bg-gray-50 rounded px-2 py-1.5">
+          <code class="text-gray-700">{{ t }}</code>
+          <button onclick="copy('{{ t }}', this)" class="text-gray-400 hover:text-blue-600 ml-2 flex-shrink-0">copy</button>
+        </div>
+        {% endfor %}
+      </div>
+      <p class="font-medium text-gray-700 mb-2">Exact filters to apply:</p>
+      <div class="space-y-1 text-gray-600">
+        <p><span class="text-gray-400 w-28 inline-block">Industry:</span> Law Practice</p>
+        <p><span class="text-gray-400 w-28 inline-block">Location:</span> Texas → Florida → Georgia</p>
+        <p><span class="text-gray-400 w-28 inline-block">Company size:</span> 2–50 employees</p>
+        <p><span class="text-gray-400 w-28 inline-block">Has email:</span> Yes (required)</p>
+        <p><span class="text-gray-400 w-28 inline-block">Keywords:</span> personal injury OR injury law</p>
+        <p><span class="text-gray-400 w-28 inline-block">Export limit:</span> 50/day on free tier</p>
+      </div>
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Step-by-step daily routine (15 min):</p>
+      <ol class="space-y-1.5 text-gray-600 list-decimal list-inside mb-4">
+        <li>Go to apollo.io → People search</li>
+        <li>Enter one title from the list</li>
+        <li>Apply all filters above</li>
+        <li>Sort by "Recently updated"</li>
+        <li>Select top 50 → Export CSV</li>
+        <li>Import CSV here: <strong>Leads → Import from Apollo CSV</strong></li>
+        <li>Next day: different title or different state</li>
+      </ol>
+      <div class="bg-green-50 border border-green-200 rounded-lg p-2.5 mb-3">
+        <p class="font-medium text-green-800 mb-1">Monthly capacity (free tier):</p>
+        <p class="text-green-700">50 exports × 22 working days = <strong>1,100 leads/month</strong></p>
+        <p class="text-green-600 mt-1">At a 20% contact rate = ~220 conversations/month from Apollo alone.</p>
+      </div>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-2.5">
+        <p class="font-medium text-gray-700 mb-1">Company search first (better leads):</p>
+        <p class="text-gray-500">Search companies with keyword "personal injury" → find the firm → then pull named partners from that firm specifically. Better quality than title search alone.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lead Source 2: LinkedIn -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-xs font-medium uppercase tracking-wide text-gray-400">Lead Source 2 — LinkedIn Manual Search</div>
+    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">FREE · 20–30 profiles/day · WARM LEADS</span>
+  </div>
+  <div class="grid grid-cols-2 gap-6">
+    <div>
+      <p class="text-xs font-medium text-gray-700 mb-2">Copy-paste search strings:</p>
+      <div class="space-y-1 mb-4">
+        {% for t in ['"personal injury attorney" partner Texas','"personal injury lawyer" "managing partner" Florida','"founding partner" "personal injury" Georgia','"trial attorney" partner "personal injury"','"PI attorney" owner Texas','"injury lawyer" partner Florida','"personal injury" "managing partner" Atlanta','"accident attorney" partner Houston'] %}
+        <div class="flex items-center justify-between bg-gray-50 rounded px-2 py-1.5">
+          <code class="text-xs text-gray-700 truncate mr-2">{{ t }}</code>
+          <button onclick="copy('{{ t }}', this)" class="text-xs text-gray-400 hover:text-blue-600 flex-shrink-0">copy</button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <p class="text-xs font-medium text-gray-700 mb-2">How to search step-by-step:</p>
+      <ol class="text-xs text-gray-600 space-y-1.5 list-decimal list-inside mb-3">
+        <li>Paste string into LinkedIn search → click <strong>People</strong> tab</li>
+        <li>All Filters → Location: United States → pick state</li>
+        <li>Connections: <strong>2nd degree first</strong> (warmer, less likely to ignore)</li>
+        <li>Open 20–30 profiles in new tabs</li>
+        <li>Check green flags below → add qualifying ones to Apollo or Velaro directly</li>
+        <li>For now (new account): just collect names, don't connect yet</li>
+      </ol>
+      <div class="grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <p class="text-green-700 font-medium mb-1">✓ Green flags</p>
+          {% for f in ['500+ connections','Posted in last 30 days','Named partner at own firm','Mentions PI / car accidents','Has company page linked','Firm has 3–20 attorneys'] %}
+          <p class="text-gray-600">• {{ f }}</p>
+          {% endfor %}
+        </div>
+        <div>
+          <p class="text-red-600 font-medium mb-1">✗ Skip these</p>
+          {% for f in ['Last active 6+ months','Solo practitioner only','General practice / family law','Under 1 year in role','No company page','Clearly not a decision maker'] %}
+          <p class="text-gray-600">• {{ f }}</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lead Source 3: Google Maps + Apify FREE -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-xs font-medium uppercase tracking-wide text-gray-400">Lead Source 3 — Google Maps (Apify Free Tier)</div>
+    <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">$5 FREE CREDITS/MONTH · USE CAREFULLY</span>
+  </div>
+  <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800 mb-4">
+    ⚠ You're on the free plan ($5 credits/month). Each Google Maps scrape costs ~$0.30–0.80 per search query. Run 6–8 searches max per month to stay within budget. Use for validation, not bulk discovery.
+  </div>
+  <div class="grid grid-cols-2 gap-6 text-xs">
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Best 8 searches to run this month (most valuable):</p>
+      <div class="space-y-1">
+        {% for q in ['personal injury law firm Dallas TX','personal injury attorney Houston TX','personal injury lawyer Miami FL','personal injury law firm Atlanta GA','PI attorney Tampa FL','accident attorney Austin TX','injury lawyer Fort Worth TX','personal injury law firm Orlando FL'] %}
+        <div class="flex items-center justify-between bg-gray-50 rounded px-2 py-1.5">
+          <code class="text-gray-700 truncate mr-2">{{ q }}</code>
+          <button onclick="copy('{{ q }}', this)" class="text-gray-400 hover:text-blue-600 flex-shrink-0">copy</button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">How to run it on Apify free tier:</p>
+      <ol class="space-y-1.5 text-gray-600 list-decimal list-inside mb-3">
+        <li>Go to apify.com → Actors → search <code class="bg-gray-100 px-1 rounded">compass/crawler-google-places</code></li>
+        <li>Paste one search query into "Search term"</li>
+        <li>Set max results: 50 (keeps cost under $0.50)</li>
+        <li>Run → download CSV when done</li>
+        <li>Import into spreadsheet → filter: rating 4.0+, reviews 10+</li>
+        <li>Google each firm website → find partner names</li>
+        <li>Cross-reference on Apollo to get email</li>
+      </ol>
+      <div class="bg-gray-50 border border-gray-200 rounded-lg p-2.5">
+        <p class="font-medium text-gray-700 mb-1">Free alternative — manual Google Maps:</p>
+        <p class="text-gray-500 mb-1">Search "personal injury law firm [city]" on Google Maps. Click each firm. Copy name + phone + website. Takes 30 min but costs nothing.</p>
+        <p class="text-gray-500">Then use <strong>Hunter.io free tier</strong> (25 email finds/month) to find partner email from firm website.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lead Source 4: Meta Ad Library -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-xs font-medium uppercase tracking-wide text-gray-400">Lead Source 4 — Meta Ad Library (Best Targets)</div>
+    <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-medium">100% FREE · HIGH INTENT LEADS</span>
+  </div>
+  <p class="text-xs text-gray-500 mb-3">Firms running Meta ads already believe in paid acquisition — the ROI conversation is 10x easier. These are your best cold email targets.</p>
+  <div class="grid grid-cols-2 gap-6 text-xs">
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Step-by-step (10 min/day):</p>
+      <ol class="space-y-1.5 text-gray-600 list-decimal list-inside">
+        <li>Go to <code class="bg-gray-100 px-1 rounded">facebook.com/ads/library</code></li>
+        <li>Country: United States · Category: All ads</li>
+        <li>Search term: "personal injury" or "injury attorney"</li>
+        <li>Filter: Active ads only</li>
+        <li>Look for firms running 3+ active ads (they're spending consistently)</li>
+        <li>Click their Facebook page → get firm name</li>
+        <li>Google firm name → find website → find partner name → find email</li>
+        <li>Add to cold email sequence (these leads get Email 1 first)</li>
+      </ol>
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">What to look for in their ads:</p>
+      <div class="space-y-1.5 text-gray-600">
+        {% for flag, note in [('5+ active ads running','They have a real budget and are serious about lead gen'),('Ads mention "free consultation"','They\'re actively acquiring cases, not just branding'),('Video ads showing attorneys','Partners are involved — easier to reach decision maker'),('Running ads 90+ days','Committed to paid — stable firm with real ad spend'),('Targeting accident victims','Pure PI focus, not mixed practice — ideal fit')] %}
+        <div class="flex gap-2">
+          <span class="text-green-600 flex-shrink-0">✓</span>
+          <div><span class="font-medium text-gray-700">{{ flag }}</span> — <span class="text-gray-500">{{ note }}</span></div>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="mt-3 bg-purple-50 border border-purple-100 rounded-lg px-3 py-2">
+        <p class="font-medium text-purple-800 mb-0.5">Expected yield</p>
+        <p class="text-purple-600">10 min/day → 3–5 high-intent firms identified → 1–2 new cold email targets added daily. These convert at 2–3x the rate of random Apollo leads.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Lead Source 5: Google Search -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-xs font-medium uppercase tracking-wide text-gray-400">Lead Source 5 — Google Advanced Search</div>
+    <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-medium">FREE · 5 leads/search · HIGH QUALITY</span>
+  </div>
+  <div class="grid grid-cols-2 gap-4 text-xs">
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Search strings (copy-paste):</p>
+      <div class="space-y-1">
+        {% for q in ['site:avvo.com "personal injury attorney" Texas "managing partner"','site:martindale.com "personal injury" Florida partner',' "personal injury law firm" "free consultation" Houston site:linkedin.com','intitle:"personal injury attorney" "managing partner" Texas','"personal injury" "founding partner" site:linkedin.com Florida'] %}
+        <div class="flex items-center justify-between bg-gray-50 rounded px-2 py-1.5">
+          <code class="text-gray-700 text-xs truncate mr-2">{{ q }}</code>
+          <button onclick="copy('{{ q }}', this)" class="text-gray-400 hover:text-blue-600 flex-shrink-0">copy</button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Legal directory mining (best free databases):</p>
+      <div class="space-y-2">
+        {% for site, tip in [('avvo.com','Search by practice area + state. Shows firm size, reviews, years of experience. Filter by "Personal Injury".'),('martindale.com','Has direct contact info and firm profiles. More complete than Avvo for larger firms.'),('justia.com','Search PI attorneys by state. Free, public profiles with contact info.'),('lawyers.com','Good for finding partner-level contacts at mid-size firms.')] %}
+        <div class="bg-gray-50 rounded p-2">
+          <code class="text-blue-600 font-medium">{{ site }}</code>
+          <p class="text-gray-500 mt-0.5">{{ tip }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Organic: LinkedIn Content -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-xs font-medium uppercase tracking-wide text-gray-400">Organic — LinkedIn Content Strategy</div>
+    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">LONG GAME · COMPOUNDS OVER TIME</span>
+  </div>
+  <div class="grid grid-cols-3 gap-4 text-xs">
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Post 5x/week — weekly schedule:</p>
+      <div class="space-y-1.5">
+        {% for day, type, desc in [('Mon','Observation','Something you noticed about PI intake — specific number, real situation'),('Tue','Client story','Anonymous firm, specific results, what you built'),('Wed','Build post','What you built this week — tools named, problem solved'),('Thu','Educational','How something works — step by step, conversational'),('Fri','Personal','Honest reflection on the business or a lesson learned')] %}
+        <div class="flex gap-2">
+          <span class="font-medium text-gray-700 w-6 flex-shrink-0">{{ day }}</span>
+          <div><span class="text-purple-600 font-medium">{{ type }}</span> — <span class="text-gray-500">{{ desc }}</span></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Engagement routine (20 min/day):</p>
+      <ol class="space-y-1.5 text-gray-600 list-decimal list-inside mb-3">
+        <li>Search "personal injury attorney" → sort by Latest</li>
+        <li>Find 5 posts from PI lawyers posted today</li>
+        <li>Leave genuine 2-3 line comments — reference something specific, hint at having solved the problem</li>
+        <li>Like 20–30 posts from PI law profiles</li>
+        <li>Never comment "Great post!" or anything generic</li>
+      </ol>
+      <div class="bg-blue-50 rounded-lg p-2.5">
+        <p class="font-medium text-blue-800 mb-1">What this does over 30 days:</p>
+        <p class="text-blue-600">PI lawyers start recognising your name in comments → they visit your profile → they see your content → they connect with you (inbound). Zero connection requests needed.</p>
+      </div>
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Voice rules — non-negotiable:</p>
+      <div class="space-y-1 text-gray-600">
+        {% for r in ['Start with observation or story — never a conclusion','Specific numbers always (never "significantly improved")','Real tools by name: n8n, VAPI, GHL, Claude','Uses "I" — personal, not corporate','Casual: "the thing is", "honestly", "anyway"','Sometimes no CTA at the end','Never: "In today\'s world", "game changer", "excited to share"','No perfect grammar every sentence — fragments fine'] %}
+        <p class="{{ 'text-red-500' if r.startswith('Never') or r.startswith('No ') else '' }}">{{ '✗' if r.startswith('Never') or r.startswith('No ') else '✓' }} {{ r }}</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Organic: Reddit -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-xs font-medium uppercase tracking-wide text-gray-400">Organic — Reddit Strategy</div>
+    <span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium">FREE · LOW VOLUME · WARM LEADS</span>
+  </div>
+  <div class="grid grid-cols-2 gap-6 text-xs">
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Subreddits to be active in:</p>
+      <div class="space-y-2">
+        {% for sub, why, how in [
+          ('r/Lawyertalk','Practicing lawyers, including PI attorneys. High signal.','Answer questions about intake, marketing, client acquisition. Never pitch. Build karma first.'),
+          ('r/lawfirm','Firm management discussions. Partners and admins.','Comment on posts about technology, staffing, growth. Hint at having solved similar problems.'),
+          ('r/personalinjury','Injury victims asking about lawyers.','Read this to understand what your clients\' clients are saying. Research only — do not post here.'),
+          ('r/legaladvice','General legal questions — huge subreddit.','Research only. Understand client pain points. Never post here.'),
+        ] %}
+        <div class="bg-gray-50 rounded p-2">
+          <code class="text-orange-600 font-medium">{{ sub }}</code> — <span class="text-gray-600 font-medium">{{ why }}</span>
+          <p class="text-gray-500 mt-0.5">{{ how }}</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Reddit rules — don't skip these:</p>
+      <div class="space-y-1.5 text-gray-600 mb-3">
+        {% for rule in ['Build 50+ karma before you comment in r/Lawyertalk — new accounts get ignored','Never mention Velaro or pitch services in comments','Answer genuinely and completely — you are trying to be helpful','After 2 weeks of helpful comments, you can mention "we solved this for a firm" — never name your agency','If someone asks follow-up questions, move to DM naturally','Check these subs daily — post at least 2-3 replies/day'] %}
+        <p class="{{ 'text-red-500' if 'Never' in rule else 'text-gray-600' }}">{{ '✗' if 'Never' in rule else '•' }} {{ rule }}</p>
+        {% endfor %}
+      </div>
+      <div class="bg-orange-50 border border-orange-100 rounded-lg p-2.5">
+        <p class="font-medium text-orange-800 mb-1">Expected result:</p>
+        <p class="text-orange-600">2-3 genuine Reddit comments/day → 2-3 PI lawyers DM you per month asking how you solved the problem. These leads are hot — they came to you.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Organic: Facebook Groups -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-xs font-medium uppercase tracking-wide text-gray-400">Organic — Facebook Groups</div>
+    <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">FREE · OLDER DEMOGRAPHIC · PI PARTNERS ACTIVE HERE</span>
+  </div>
+  <div class="grid grid-cols-2 gap-6 text-xs">
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Groups to join and be active in:</p>
+      <div class="space-y-1.5">
+        {% for group in ['Personal Injury Attorneys Network','Law Firm Marketing & Business Development','Attorney Marketing','Legal Marketing Association (LMA)','Trial Lawyers Network','Personal Injury Lawyer Community'] %}
+        <div class="bg-gray-50 rounded px-2 py-1.5 flex items-center justify-between">
+          <span class="text-gray-700">{{ group }}</span>
+          <button onclick="copy('{{ group }}', this)" class="text-gray-400 hover:text-blue-600 ml-2">copy</button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Facebook group playbook:</p>
+      <ol class="space-y-1.5 text-gray-600 list-decimal list-inside mb-3">
+        <li>Join all groups above — request to join if needed</li>
+        <li><strong>Week 1–2:</strong> Observe only. Read what attorneys complain about.</li>
+        <li><strong>Week 3:</strong> Start commenting on posts about intake, leads, technology — 2-3/day</li>
+        <li><strong>Week 4:</strong> When someone asks about intake software/AI, reply with a genuine helpful answer and mention you've "built something similar for a firm"</li>
+        <li>If they engage → DM them on Facebook or find on LinkedIn</li>
+        <li>Never post self-promotional content — groups ban for this</li>
+      </ol>
+      <div class="bg-blue-50 rounded-lg p-2.5">
+        <p class="font-medium text-blue-800 mb-1">What works in Facebook groups:</p>
+        <p class="text-blue-600">Attorneys posting "we're overwhelmed with intake" or "our response time is terrible" — these are your best leads. Reply immediately with a specific, helpful observation. Then connect on LinkedIn.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5-Step Warm Pipeline -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">5-Step Warm Pipeline — 20 New Leads/Day</div>
+  <div class="space-y-2 mb-4">
+    {% for day, action, detail in [
+      ('D1','Like posts','Like last 2–3 LinkedIn posts of each new lead. No comment yet. Takes 15 seconds per lead.'),
+      ('D2','Comment','Post genuine comment on most recent post. Under 3 lines. Reference something specific. Hint at having solved the problem. Never pitch.'),
+      ('D3','Connect','Send connection request referencing your comment. "Hey [Name] — commented on your post about [topic]. Worth connecting."'),
+      ('D4','Engage firm page','Like/comment on their firm company page. Shows you\'re paying attention to the firm, not just the person.'),
+      ('D5','Cold email','Send Email 1 via gmail_sender.py — after-hours intake angle. Only to leads where you found a valid email.'),
+      ('D7','LinkedIn DM','DM accepted connections only. Use the after-hours question. Under 5 lines. No pitch.'),
+      ('D10','Follow-up','Email 2 + DM bump if no reply. Different angle — shorter. The "speed wins the case" framing.'),
+      ('D15','Breakup','Email 3 only. Close the loop. Leave calendar link. No more contact after this.'),
+    ] %}
+    <div class="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+      <span class="mono text-xs text-gray-400 flex-shrink-0 w-8">{{ day }}</span>
+      <span class="text-xs font-medium text-gray-700 w-24 flex-shrink-0">{{ action }}</span>
+      <span class="text-xs text-gray-500">{{ detail }}</span>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="bg-gray-50 rounded-lg p-3 text-xs text-center text-gray-500">
+    20 new leads/day entering D1 = ~100 total daily actions across all stages. This is your full outreach system.
+  </div>
+</div>
+
+<!-- Daily Schedule -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Daily Schedule — 5–6 Hours</div>
+  <div class="space-y-2">
+    {% for block in [
+      ('9:00–9:30','Replies (30 min)','Check all LinkedIn DMs + cold email replies. Classify every reply: HOT / WARM / OBJECTION. Draft and send responses immediately.'),
+      ('9:30–10:00','Apollo export (30 min)','Export 50 new PI law leads from Apollo. Import CSV into Velaro. Quick scan — delete obvious non-PI contacts.'),
+      ('10:00–10:30','Qualify leads (30 min)','Open Qualify page. Score yesterday\'s new leads. Move 7+ scores into Day 1 pipeline.'),
+      ('10:30–12:00','LinkedIn outreach (90 min)','D1: Like posts of 20 new leads. D2: Comment on 20 leads. D3: Send connections (Week 3+ only). D7: DM accepted connections. Spread over full 90 minutes.'),
+      ('12:00–1:00','Cold email (60 min)','Run gmail_sender.py for today\'s email batch. Check stats. Mark any replies in Velaro.'),
+      ('1:00–1:30','Meta Ad Library (30 min)','Find 3–5 firms running PI ads. Add to cold email queue as priority leads.'),
+      ('2:00–3:00','Discovery calls','Pre-call research 30 min before. Screen share Velaro demo. Send proposal within 2 hours of each call.'),
+      ('3:00–3:30','Reddit + Facebook (30 min)','Post 2–3 genuine replies in r/Lawyertalk or r/lawfirm. Comment in 1–2 Facebook groups.'),
+      ('3:30–4:00','Content (30 min)','Post today\'s LinkedIn content from Content Queue. Engage with comments on your previous posts.'),
+      ('4:00–4:30','Pipeline admin (30 min)','Update every lead touched today to correct stage in Velaro. Flag anything overdue in Follow-ups.'),
+      ('4:30–5:00','Tomorrow prep (30 min)','Review what\'s due tomorrow. Pull tomorrow\'s post from Content Queue. Set intention for who to DM.'),
+    ] %}
+    <div class="flex items-start gap-3 py-2 border-b border-gray-50 last:border-0">
+      <span class="mono text-xs text-gray-400 flex-shrink-0 w-28">{{ block[0] }}</span>
+      <span class="text-xs font-medium text-gray-700 w-36 flex-shrink-0">{{ block[1] }}</span>
+      <span class="text-xs text-gray-500">{{ block[2] }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Discovery Call -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Discovery Call Framework — 20 Minutes</div>
+  <div class="grid grid-cols-3 gap-4 text-xs">
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Open</p>
+      <p class="text-gray-600 italic mb-3">"Tell me about the firm — how many attorneys, and where do most of your cases come from?"</p>
+      <p class="font-medium text-gray-700 mb-2">Dig questions</p>
+      {% for q in ['When someone calls after hours about an accident, what\'s your current process?','What\'s your average response time to a new web form inquiry?','Are you running paid ads? What\'s the monthly spend?','What\'s your average case value?','How many inquiries a week do you think you\'re not reaching in time?'] %}
+      <p class="text-gray-600 mb-1">• {{ q }}</p>
+      {% endfor %}
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">ROI frame (use their numbers)</p>
+      <p class="text-gray-600 italic mb-3">"Based on what you told me — missing [X] inquiries/week at [Y] average case value — recovering 30% of those is [Z]/month. Our retainer is [price]. You're profitable inside the first month."</p>
+      <p class="font-medium text-gray-700 mb-2">Close</p>
+      <p class="text-gray-600 italic">"Setup is [price] — we build everything, go live in 4 weeks. Monthly retainer is [price] to keep it optimised. Want to move forward this week?"</p>
+    </div>
+    <div>
+      <p class="font-medium text-gray-700 mb-2">Objection handlers</p>
+      {% for obj, ans in [
+        ('We have a receptionist','This doesn\'t replace them. It covers what they physically can\'t — 11pm calls, 3am web forms, five simultaneous inquiries.'),
+        ('Tried a chatbot before','That was generic. This is custom-built for PI intake specifically — the qualification questions, case type filtering, booking flow. That\'s why I show a demo first.'),
+        ('Too expensive','What\'s one missed case worth to your firm? Our setup is typically less than that. It pays for itself month 1.'),
+        ('Send me information','The info isn\'t what closes it. A 15-minute demo using your firm\'s actual name and case types is. Let me show you rather than send a deck.'),
+      ] %}
+      <div class="mb-2">
+        <p class="font-medium text-gray-700">"{{ obj }}"</p>
+        <p class="text-gray-500">→ {{ ans }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Target States Reference -->
+<div class="bg-white rounded-xl border border-gray-100 p-5">
+  <div class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Target States — Priority Order</div>
+  <div class="grid grid-cols-2 gap-4 text-xs">
+    <div class="bg-green-50 border border-green-200 rounded-lg p-3">
+      <p class="font-medium text-green-800 mb-2">Month 1 — Start here</p>
+      {% for s, r in [('Texas','Highest PI case volume in US. Tech-forward lawyers. Heavy ad spenders. Dallas, Houston, Austin, Fort Worth.'),('Florida','Massive accident market. Competitive = desperate for edge. Miami, Tampa, Orlando, Jacksonville.'),('Georgia (Atlanta)','Growing market. Mid-size firms. Less AI-pitched than TX/FL. Start in Atlanta metro.')] %}
+      <div class="mb-2"><span class="font-medium text-gray-800">{{ s }}</span><br><span class="text-gray-500">{{ r }}</span></div>
+      {% endfor %}
+    </div>
+    <div class="bg-blue-50 border border-blue-100 rounded-lg p-3">
+      <p class="font-medium text-blue-800 mb-2">Month 2+ — Expand to</p>
+      {% for s, r in [('California','Huge market but competitive. LA, San Diego, San Jose. Better after you have 1–2 case studies.'),('New York','Large firms, high case values. NYC + Long Island PI market.'),('Arizona (Phoenix)','Growing fast. Less AI competition. Mid-size firms responsive to outreach.'),('Illinois (Chicago)','Strong PI market. Chicago firms specifically.'),('Pennsylvania','Philadelphia PI firms. Underserved by AI agencies.')] %}
+      <div class="mb-1.5"><span class="font-medium text-gray-800">{{ s }}</span> — <span class="text-gray-500">{{ r }}</span></div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+</div>
+{% endblock %}

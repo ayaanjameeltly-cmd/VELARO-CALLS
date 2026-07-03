@@ -1,0 +1,607 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Sunday / Weekend Banner -->
+  <div id="weekend-banner" class="hidden bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
+    <span class="text-amber-500 text-lg">⏸</span>
+    <div>
+      <span class="text-sm font-medium text-amber-800">No calls today — it's a weekend</span>
+      <span class="text-xs text-amber-600 ml-2">vapi_caller.py will skip all leads until Monday 9am local time</span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-semibold text-gray-900">Retell Calls</h1>
+      <p class="text-xs text-gray-400 mt-0.5">Brooke outbound + inbound — PI law firms · Retell AI</p>
+    </div>
+    <div class="flex gap-2">
+      <span class="text-xs text-gray-400 mono bg-gray-100 px-2 py-1 rounded">+1 (832) 408-9822</span>
+      <button onclick="clearHistory()"
+        class="text-xs text-red-500 border border-red-200 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors">
+        Clear History
+      </button>
+      <button onclick="document.getElementById('add-modal').classList.remove('hidden')"
+        class="bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-gray-700">
+        + Add Lead
+      </button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-8 gap-3">
+    {% for label, val, color in [
+      ('In Queue', queue_total, 'indigo'),
+      ('Today', calls_today, 'blue'),
+      ('HOT — Booked', hot_total, 'green'),
+      ('WARM — Email', warm_total, 'yellow'),
+      ('Voicemails', vm_total, 'purple'),
+      ('Not Interested', ni_total, 'red'),
+      ('No Answer', no_answer_total, 'orange'),
+      ('Total Calls', total_calls, 'gray'),
+    ] %}
+    <div class="bg-white rounded-xl border border-gray-100 p-3">
+      <div class="text-2xl font-semibold mono
+        {% if color == 'indigo' %}text-indigo-600
+        {% elif color == 'green' %}text-green-600
+        {% elif color == 'yellow' %}text-yellow-600
+        {% elif color == 'red' %}text-red-500
+        {% elif color == 'purple' %}text-purple-600
+        {% elif color == 'blue' %}text-blue-600
+        {% elif color == 'orange' %}text-orange-500
+        {% else %}text-gray-900{% endif %}">{{ val }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">{{ label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Warm-up Mode -->
+  <div class="bg-white rounded-xl border border-gray-100 p-4">
+    <div class="flex items-center justify-between mb-3">
+      <div>
+        <h2 class="text-sm font-semibold text-gray-800">Call Warm-up</h2>
+        <p class="text-xs text-gray-400 mt-0.5">Today: <span class="font-semibold text-gray-700">{{ calls_today }} / {{ daily_limit }}</span> calls</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-xs text-gray-400">Custom:</span>
+        <input type="number" id="customLimit" min="1" max="120" value="{{ daily_limit }}"
+          class="w-16 border border-gray-200 rounded-lg px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-gray-900">
+        <button onclick="setLimit(document.getElementById('customLimit').value)"
+          class="px-3 py-1 bg-gray-900 text-white text-xs rounded-lg hover:bg-gray-700 transition-colors">Set</button>
+      </div>
+    </div>
+
+    <!-- Progress bar -->
+    <div class="w-full bg-gray-100 rounded-full h-2 mb-3">
+      {% set pct = [((calls_today / daily_limit) * 100)|int, 100]|min %}
+      <div class="h-2 rounded-full transition-all {% if pct >= 100 %}bg-green-500{% elif pct >= 60 %}bg-blue-500{% else %}bg-gray-400{% endif %}"
+        style="width: {{ pct }}%"></div>
+    </div>
+
+    <!-- Week presets -->
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-gray-400 shrink-0">Presets:</span>
+      {% for label, limit, desc in [
+        ('Week 1', 10, '10/day — new number, safest'),
+        ('Week 2', 20, '20/day — warming up'),
+        ('Week 3', 40, '40/day — building reputation'),
+        ('Week 4+', 60, '60/day — full speed'),
+      ] %}
+      <button onclick="setLimit({{ limit }})"
+        class="px-3 py-1 text-xs rounded-lg border transition-colors font-medium
+          {% if daily_limit == limit %}bg-gray-900 text-white border-gray-900{% else %}bg-gray-50 text-gray-600 border-gray-200 hover:border-gray-400{% endif %}"
+        title="{{ desc }}">
+        {{ label }} ({{ limit }})
+      </button>
+      {% endfor %}
+    </div>
+    <div id="limitStatus" class="hidden mt-2 text-xs font-medium"></div>
+  </div>
+
+  <!-- A/B Variant Breakdown -->
+  {% if ab_stats %}
+  <div class="bg-white rounded-xl border border-gray-100 p-4 mt-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-sm font-semibold text-gray-800">A/B Test — Opener Performance</h2>
+      <span class="text-xs text-gray-400">HOT + WARM = converted</span>
+    </div>
+    <div class="grid grid-cols-4 gap-3">
+      {% set variant_meta = {
+        'A-Pain':       ('Pain-Forward',  'bg-blue-50   border-blue-200   text-blue-700'),
+        'B-Stat':       ('Stat Lead',     'bg-purple-50 border-purple-200 text-purple-700'),
+        'C-SocialProof':('Social Proof',  'bg-green-50  border-green-200  text-green-700'),
+        'D-UltraDirect':('Ultra Direct',  'bg-orange-50 border-orange-200 text-orange-700'),
+      } %}
+      {% for row in ab_stats %}
+      {% set meta = variant_meta.get(row.ab_variant, ('Unknown', 'bg-gray-50 border-gray-200 text-gray-700')) %}
+      <div class="border rounded-xl p-3 {{ meta[1].split()[1] }} {{ meta[1].split()[2] }}">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-semibold {{ meta[1].split()[2] }}">{{ row.ab_variant }}</span>
+          <span class="text-xs font-bold {{ 'text-green-600' if row.rate >= 20 else 'text-yellow-600' if row.rate >= 10 else 'text-gray-400' }}">
+            {{ row.rate }}%
+          </span>
+        </div>
+        <div class="text-xs text-gray-500 mb-1">{{ meta[0] }}</div>
+        <div class="flex gap-2 text-xs mt-2">
+          <span class="text-gray-400">{{ row.calls }} calls</span>
+          <span class="text-green-600 font-medium">{{ row.hot }}🔥</span>
+          <span class="text-yellow-600 font-medium">{{ row.warm }}✉</span>
+        </div>
+        <!-- conversion bar -->
+        <div class="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div class="h-full rounded-full {{ 'bg-green-500' if row.rate >= 20 else 'bg-yellow-400' if row.rate >= 10 else 'bg-gray-300' }}"
+               style="width: {{ [row.rate * 2, 100]|min }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="grid grid-cols-2 gap-6 mt-4">
+
+    <!-- Call Queue -->
+    <div class="bg-white rounded-xl border border-gray-100 p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-gray-800">Call Queue</h2>
+        <span class="text-xs text-gray-400">{{ leads|length }} leads</span>
+      </div>
+      {% if leads %}
+      <div class="space-y-2">
+        {% for lead in leads %}
+        <div class="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-medium text-gray-900 truncate">{{ lead.name }}</span>
+              {% if lead.do_not_call %}
+              <span class="text-xs bg-red-100 text-red-600 px-1 rounded">DNC</span>
+              {% endif %}
+            </div>
+            <div class="text-xs text-gray-400 truncate">{{ lead.firm_name }}{% if lead.city and lead.city != 'None' %} · {{ lead.city }}{% endif %}{% if lead.state and lead.state != 'None' %}, {{ lead.state }}{% endif %}</div>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="text-xs mono text-gray-500">{{ lead.phone }}</span>
+              {% if lead.direct_number %}
+              <span class="text-xs bg-green-100 text-green-700 px-1 rounded">direct ✓</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="flex flex-col items-end gap-1 flex-shrink-0">
+            <div class="flex items-center gap-1.5">
+              {# score badge — green ≥5, yellow 3-4, orange 1-2, red ≤0 #}
+              {% set sc = lead.score if lead.score is not none else 5 %}
+              <span class="text-xs font-bold px-1.5 py-0.5 rounded-md
+                {% if sc >= 5 %}bg-green-100 text-green-700
+                {% elif sc >= 3 %}bg-yellow-100 text-yellow-700
+                {% elif sc >= 1 %}bg-orange-100 text-orange-700
+                {% else %}bg-red-100 text-red-600{% endif %}"
+                title="Lead score — drops by 1 each missed call">
+                {{ sc }}
+              </span>
+              <span class="text-xs px-1.5 py-0.5 rounded font-medium
+                {% if lead.lead_type == 'HIRING_INTAKE' %}bg-orange-100 text-orange-700
+                {% elif lead.lead_type == 'OVERNIGHT_INTAKE' %}bg-purple-100 text-purple-700
+                {% elif lead.lead_type == 'HIGH_VOLUME' %}bg-blue-100 text-blue-700
+                {% elif lead.lead_type == 'WARM_EMAIL' %}bg-yellow-100 text-yellow-700
+                {% elif lead.lead_type == 'REDDIT_ENGAGED' %}bg-purple-100 text-purple-700
+                {% else %}bg-gray-100 text-gray-600{% endif %}">
+                {{ lead.lead_type }}
+              </span>
+            </div>
+            <span class="text-xs text-gray-400">{{ lead.timezone or state_tz.get(lead.state, 'CST') }}</span>
+          </div>
+          <div class="flex gap-1 flex-shrink-0">
+            <button onclick="openEdit({{ lead.id }})"
+              class="text-xs text-gray-400 hover:text-blue-500 px-1" title="Edit">✏️</button>
+            {% if not lead.do_not_call %}
+            <form method="post" action="/calls/leads/{{ lead.id }}/dnc" class="inline">
+              <button class="text-xs text-gray-400 hover:text-red-500 px-1" title="Mark DNC">✕</button>
+            </form>
+            {% endif %}
+            <form method="post" action="/calls/leads/{{ lead.id }}/delete" class="inline"
+              onsubmit="return confirm('Delete {{ lead.name }}?')">
+              <button class="text-xs text-gray-400 hover:text-red-600 px-1" title="Delete">🗑</button>
+            </form>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="text-xs text-gray-400 py-4 text-center">No leads yet — add your first one above</p>
+      {% endif %}
+    </div>
+
+    <!-- No Answer list -->
+    {% if no_answer_leads %}
+    <div class="bg-orange-50 border border-orange-200 rounded-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold text-orange-800">📵 No Answer — Called Twice, No Response</h2>
+        <span class="text-xs text-orange-500">{{ no_answer_leads|length }} leads</span>
+      </div>
+      <div class="space-y-2">
+        {% for lead in no_answer_leads %}
+        <div class="flex items-center gap-3 py-2 border-b border-orange-100 last:border-0">
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-medium text-gray-800 truncate">{{ lead.name }}</div>
+            <div class="text-xs text-gray-400 truncate">{{ lead.firm_name }}{% if lead.state and lead.state != 'None' %}, {{ lead.state }}{% endif %}</div>
+            <div class="text-xs mono text-gray-500">{{ lead.phone }}</div>
+          </div>
+          <form method="post" action="/calls/leads/{{ lead.id }}/delete" class="inline"
+            onsubmit="return confirm('Delete {{ lead.name }}?')">
+            <button class="text-xs text-gray-400 hover:text-red-600 px-1" title="Delete">🗑</button>
+          </form>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Right column -->
+    <div class="space-y-4">
+
+      <!-- HOT leads -->
+      {% if hot_leads %}
+      <div class="bg-green-50 border border-green-200 rounded-xl p-4">
+        <h2 class="text-sm font-semibold text-green-800 mb-3">🔥 HOT — Send Calendar Invite</h2>
+        <div class="space-y-3">
+          {% for r in hot_leads %}
+          <div class="bg-white rounded-lg border border-green-100 p-3">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="font-medium text-green-900 text-xs">{{ r.lead_name }}</span>
+              <span class="text-green-600 text-xs">· {{ r.firm_name }}</span>
+              <span class="mono text-green-700 text-xs ml-auto">{{ r.email_collected or '—' }}</span>
+              <span class="text-green-600 text-xs">{{ r.best_day or '?' }} {{ r.best_time or '' }}</span>
+            </div>
+            {% if r.attorneys or r.runs_ads or r.after_hours_process or r.weekly_inquiries or r.avg_case_value %}
+            <div class="grid grid-cols-5 gap-1 pt-2 border-t border-green-100">
+              {% if r.attorneys %}<div class="text-center"><div class="text-xs font-medium text-gray-800">{{ r.attorneys }}</div><div class="text-xs text-gray-400">attorneys</div></div>{% endif %}
+              {% if r.runs_ads %}<div class="text-center"><div class="text-xs font-medium text-gray-800">{{ r.runs_ads }}</div><div class="text-xs text-gray-400">runs ads</div></div>{% endif %}
+              {% if r.weekly_inquiries %}<div class="text-center"><div class="text-xs font-medium text-gray-800">{{ r.weekly_inquiries }}</div><div class="text-xs text-gray-400">inq/week</div></div>{% endif %}
+              {% if r.avg_case_value %}<div class="text-center"><div class="text-xs font-medium text-gray-800">{{ r.avg_case_value }}</div><div class="text-xs text-gray-400">avg case</div></div>{% endif %}
+              {% if r.after_hours_process %}<div class="col-span-{% if r.attorneys and r.runs_ads and r.weekly_inquiries and r.avg_case_value %}1{% else %}5{% endif %} text-center"><div class="text-xs font-medium text-gray-800 truncate">{{ r.after_hours_process }}</div><div class="text-xs text-gray-400">after-hours now</div></div>{% endif %}
+            </div>
+            {% else %}
+            <div class="text-xs text-gray-400 pt-1">No qualification data yet</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Callbacks -->
+      {% if callbacks %}
+      <div class="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+        <h2 class="text-sm font-semibold text-yellow-800 mb-2">📅 Callbacks Scheduled</h2>
+        <div class="space-y-2">
+          {% for r in callbacks %}
+          <div class="flex items-center gap-2 text-xs">
+            <span class="font-medium text-yellow-900">{{ r.callback_date or '—' }}</span>
+            <span class="text-yellow-700">{{ r.lead_name }}</span>
+            <span class="text-yellow-600">{{ r.firm_name }}</span>
+            <span class="mono text-yellow-700">{{ r.phone_collected or '—' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- Recent call log -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <h2 class="text-sm font-semibold text-gray-800 mb-3">Recent Calls</h2>
+        {% if recent_calls %}
+        <div class="space-y-1.5">
+          {% for r in recent_calls %}
+          <div class="flex items-center gap-2 text-xs py-1 border-b border-gray-50 last:border-0">
+            <span class="px-1.5 py-0.5 rounded text-xs font-medium
+              {% if r.outcome == 'HOT' %}bg-green-100 text-green-700
+              {% elif r.outcome == 'WARM' %}bg-yellow-100 text-yellow-700
+              {% elif r.outcome == 'VOICEMAIL' %}bg-purple-100 text-purple-700
+              {% elif r.outcome == 'NOT_INTERESTED' %}bg-red-100 text-red-600
+              {% elif r.outcome == 'NO_ANSWER' %}bg-gray-100 text-gray-500
+              {% else %}bg-gray-100 text-gray-500{% endif %}">
+              {{ r.outcome }}
+            </span>
+            <span class="font-medium text-gray-800 truncate flex-1">{{ r.lead_name }}</span>
+            <span class="text-gray-400 truncate">{{ r.firm_name }}</span>
+            {% if r.gatekeeper_status %}
+            <span class="text-xs px-1 py-0.5 rounded font-mono
+              {% if r.gatekeeper_status == 'BYPASSED' %}bg-green-50 text-green-600
+              {% elif r.gatekeeper_status == 'DIRECT' %}bg-blue-50 text-blue-500
+              {% elif r.gatekeeper_status == 'BLOCKED' %}bg-red-50 text-red-400
+              {% else %}bg-gray-50 text-gray-300{% endif %}"
+              title="Gatekeeper: {{ r.gatekeeper_status }}">
+              {% if r.gatekeeper_status == 'BYPASSED' %}✓ GK
+              {% elif r.gatekeeper_status == 'DIRECT' %}direct
+              {% elif r.gatekeeper_status == 'BLOCKED' %}✗ GK
+              {% else %}?{% endif %}
+            </span>
+            {% endif %}
+            {% if r.ab_variant %}
+            <span class="text-xs px-1 py-0.5 rounded font-mono
+              {% if r.ab_variant == 'A-Pain' %}bg-blue-50 text-blue-500
+              {% elif r.ab_variant == 'B-Stat' %}bg-purple-50 text-purple-500
+              {% elif r.ab_variant == 'C-SocialProof' %}bg-green-50 text-green-500
+              {% elif r.ab_variant == 'D-UltraDirect' %}bg-orange-50 text-orange-500
+              {% else %}bg-gray-50 text-gray-400{% endif %}">
+              {{ r.ab_variant }}
+            </span>
+            {% endif %}
+            <span class="text-gray-400 flex-shrink-0">
+              {{ r.called_at[:10] if r.called_at else '' }}
+            </span>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-xs text-gray-400 py-4 text-center">No calls yet — run <span class="mono">python3 vapi_caller.py</span></p>
+        {% endif %}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Run instructions -->
+  <div class="bg-gray-900 rounded-xl p-4 text-xs mono text-gray-300 space-y-1">
+    <div class="text-gray-500 mb-2"># commands</div>
+    <div><span class="text-green-400">$</span> python3 vapi_caller.py <span class="text-gray-500">  # run calls (9am–5pm per lead timezone)</span></div>
+    <div><span class="text-green-400">$</span> python3 vapi_results.py <span class="text-gray-500"> # view full dashboard</span></div>
+    <div><span class="text-green-400">$</span> python3 vapi_configure.py <span class="text-gray-500"># reconfigure Brooke</span></div>
+  </div>
+
+</div>
+
+<!-- Add Lead Modal -->
+<div id="add-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-gray-900">Add Lead to Call Queue</h2>
+      <button onclick="document.getElementById('add-modal').classList.add('hidden')"
+        class="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+    </div>
+    <form method="post" action="/calls/leads/add" class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-gray-500">Full Name *</label>
+          <input name="name" required placeholder="James Amaro"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Firm Name *</label>
+          <input name="firm_name" required placeholder="Amaro Law Firm"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Main Phone</label>
+          <input name="phone" placeholder="8669043501"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Direct Number <span class="text-green-600">(skip gatekeeper)</span></label>
+          <input name="direct_number" placeholder="optional"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">City</label>
+          <input name="city" placeholder="Houston"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">State</label>
+          <input name="state" placeholder="TX" maxlength="2"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+            onchange="autoTimezone(this.value)">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Timezone <span class="text-gray-400">(auto-set from state)</span></label>
+          <input name="timezone" id="tz-input" placeholder="America/Chicago"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Lead Type</label>
+          <select name="lead_type"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+            <option value="COLD">COLD</option>
+            <option value="HIRING_INTAKE">HIRING_INTAKE</option>
+            <option value="OVERNIGHT_INTAKE">OVERNIGHT_INTAKE</option>
+            <option value="HIGH_VOLUME">HIGH_VOLUME</option>
+            <option value="WARM_EMAIL">WARM_EMAIL</option>
+            <option value="REDDIT_ENGAGED">REDDIT_ENGAGED</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Google Reviews</label>
+          <input name="google_reviews" type="number" placeholder="0"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500">Notes</label>
+        <input name="notes" placeholder="hiring intake specialist, emailed Jun 26..."
+          class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button type="submit"
+          class="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700">
+          Add to Queue
+        </button>
+        <button type="button"
+          onclick="document.getElementById('add-modal').classList.add('hidden')"
+          class="px-4 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Lead Modal -->
+<div id="edit-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-2xl p-6 w-full max-w-lg shadow-xl">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-sm font-semibold text-gray-900">Edit Lead</h2>
+      <button onclick="document.getElementById('edit-modal').classList.add('hidden')"
+        class="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+    </div>
+    <form id="edit-form" method="post" action="" class="space-y-3">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs text-gray-500">Full Name *</label>
+          <input name="name" id="edit-name" required
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Firm Name *</label>
+          <input name="firm_name" id="edit-firm_name" required
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Main Phone</label>
+          <input name="phone" id="edit-phone"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Direct Number <span class="text-green-600">(skip gatekeeper)</span></label>
+          <input name="direct_number" id="edit-direct_number"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">City</label>
+          <input name="city" id="edit-city"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">State</label>
+          <input name="state" id="edit-state" maxlength="2"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400"
+            onchange="autoTimezone(this.value, 'edit-tz')">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Timezone</label>
+          <input name="timezone" id="edit-tz"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Lead Type</label>
+          <select name="lead_type" id="edit-lead_type"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+            <option value="COLD">COLD</option>
+            <option value="HIRING_INTAKE">HIRING_INTAKE</option>
+            <option value="OVERNIGHT_INTAKE">OVERNIGHT_INTAKE</option>
+            <option value="HIGH_VOLUME">HIGH_VOLUME</option>
+            <option value="WARM_EMAIL">WARM_EMAIL</option>
+            <option value="REDDIT_ENGAGED">REDDIT_ENGAGED</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">Google Reviews</label>
+          <input name="google_reviews" id="edit-google_reviews" type="number"
+            class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500">Notes</label>
+        <input name="notes" id="edit-notes"
+          class="w-full mt-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button type="submit"
+          class="flex-1 bg-gray-900 text-white text-sm py-2 rounded-lg hover:bg-gray-700">
+          Save Changes
+        </button>
+        <button type="button"
+          onclick="document.getElementById('edit-modal').classList.add('hidden')"
+          class="px-4 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const TZ_MAP = {
+  AL:"America/Chicago",  AK:"America/Anchorage", AZ:"America/Phoenix",
+  AR:"America/Chicago",  CA:"America/Los_Angeles",CO:"America/Denver",
+  CT:"America/New_York", DE:"America/New_York",  FL:"America/New_York",
+  GA:"America/New_York", HI:"Pacific/Honolulu",  ID:"America/Denver",
+  IL:"America/Chicago",  IN:"America/Indiana/Indianapolis",
+  IA:"America/Chicago",  KS:"America/Chicago",   KY:"America/New_York",
+  LA:"America/Chicago",  ME:"America/New_York",  MD:"America/New_York",
+  MA:"America/New_York", MI:"America/Detroit",   MN:"America/Chicago",
+  MS:"America/Chicago",  MO:"America/Chicago",   MT:"America/Denver",
+  NE:"America/Chicago",  NV:"America/Los_Angeles",NH:"America/New_York",
+  NJ:"America/New_York", NM:"America/Denver",    NY:"America/New_York",
+  NC:"America/New_York", ND:"America/Chicago",   OH:"America/New_York",
+  OK:"America/Chicago",  OR:"America/Los_Angeles",PA:"America/New_York",
+  RI:"America/New_York", SC:"America/New_York",  SD:"America/Chicago",
+  TN:"America/Chicago",  TX:"America/Chicago",   UT:"America/Denver",
+  VT:"America/New_York", VA:"America/New_York",  WA:"America/Los_Angeles",
+  WV:"America/New_York", WI:"America/Chicago",   WY:"America/Denver",
+};
+
+function autoTimezone(state, targetId) {
+  const id = targetId || 'tz-input';
+  const tz = TZ_MAP[state.toUpperCase()];
+  if (tz) document.getElementById(id).value = tz;
+}
+
+function openEdit(lid) {
+  fetch(`/calls/leads/${lid}/edit`)
+    .then(r => r.json())
+    .then(d => {
+      document.getElementById('edit-form').action = `/calls/leads/${lid}/edit`;
+      ['name','firm_name','phone','direct_number','city','state','timezone','google_reviews','notes'].forEach(f => {
+        const el = document.getElementById('edit-' + f);
+        if (el) el.value = d[f] || '';
+      });
+      const lt = document.getElementById('edit-lead_type');
+      if (lt) lt.value = d.lead_type || 'COLD';
+      // auto-fill timezone if empty or missing
+      const tzEl = document.getElementById('edit-tz');
+      if (tzEl && !tzEl.value && d.state) autoTimezone(d.state, 'edit-tz');
+      document.getElementById('edit-modal').classList.remove('hidden');
+    });
+}
+
+// show weekend banner if today is Saturday or Sunday
+(function() {
+  const day = new Date().getDay(); // 0=Sun, 6=Sat
+  if (day === 0 || day === 6) {
+    document.getElementById('weekend-banner').classList.remove('hidden');
+  }
+})();
+
+function clearHistory() {
+  if (!confirm('Delete all call history? This cannot be undone.')) return;
+  fetch('/api/calls/clear-history', {method:'POST'})
+    .then(r => r.json())
+    .then(d => { if (d.ok) location.reload(); });
+}
+
+function setLimit(limit) {
+  limit = parseInt(limit);
+  if (!limit || limit < 1) return;
+  const statusEl = document.getElementById('limitStatus');
+  fetch('/api/calls/set-daily-limit', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({limit})
+  })
+  .then(r => r.json())
+  .then(d => {
+    statusEl.classList.remove('hidden');
+    if (d.ok) {
+      statusEl.className = 'mt-2 text-xs font-medium text-green-600';
+      statusEl.textContent = `✓ Daily limit set to ${d.limit} calls — active from next session`;
+      document.getElementById('customLimit').value = d.limit;
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      statusEl.className = 'mt-2 text-xs font-medium text-red-500';
+      statusEl.textContent = 'Error: ' + (d.error || 'Failed');
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,235 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- Header -->
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-lg font-semibold">Daily Planner</h1>
+    <p class="text-xs text-gray-400 mt-0.5 mono">{{ today }}</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <span id="progress-label" class="text-xs text-gray-400 mono">0 / 22 done</span>
+    <a href="/planner/reset" onclick="return confirm('Reset today\'s checklist?')" class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-500">Reset</a>
+    <a href="/content" class="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700">Content Queue →</a>
+  </div>
+</div>
+
+<!-- Progress Bar -->
+<div class="bg-white rounded-xl border border-gray-100 p-4 mb-5">
+  <div class="flex items-center justify-between mb-2">
+    <span class="text-xs font-medium text-gray-700">Today's Progress</span>
+    <span id="progress-pct" class="text-xs mono text-gray-500">0%</span>
+  </div>
+  <div class="w-full bg-gray-100 rounded-full h-2 mb-3">
+    <div id="progress-bar" class="h-2 rounded-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-500" style="width:0%"></div>
+  </div>
+  <div class="grid grid-cols-4 gap-3">
+    {% for label, val, color in [
+      ('Leads in Pipeline', pipeline_count, 'blue'),
+      ('Overdue Today', overdue_count, 'red'),
+      ('Emails Sent', emails_today, 'green'),
+      ('Calls This Week', calls_week, 'orange'),
+    ] %}
+    <div class="text-center">
+      <div class="text-lg font-semibold mono {{ 'text-red-600' if color=='red' else 'text-green-600' if color=='green' else 'text-orange-500' if color=='orange' else 'text-blue-600' }}">{{ val }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">{{ label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Time Blocks -->
+{% set blocks = [
+  ('🔔', '9:00 – 9:30am', 'Replies & Inbox', 'blue', [
+    ('reply_1', 'Check LinkedIn DMs + reply to all comments'),
+    ('reply_2', 'Check Instagram DMs and comments'),
+    ('reply_3', 'Check cold email replies (Gmail)'),
+    ('reply_4', 'Classify every reply → HOT / WARM / OBJECTION → draft response'),
+  ]),
+  ('🧠', '9:30 – 10:30am', 'Claude Prep', 'blue', [
+    ('prep_1', 'Run Lead Qualifier on yesterday\'s new leads (score 1-10)'),
+    ('prep_2', 'Generate Day 2 comments for today\'s 20 leads'),
+    ('prep_3', 'Generate Day 5-7 DMs for accepted connections'),
+    ('prep_4', 'Generate cold email openers for today\'s email batch'),
+  ]),
+  ('💼', '10:30am – 12:00pm', 'LinkedIn Outreach', 'green', [
+    ('li_1', 'Day 1: Like last 3 posts of 20 new PI lawyer leads'),
+    ('li_2', 'Day 2: Post 20 personalised comments (paste from Claude)'),
+    ('li_3', 'Day 3: Send 20 connection requests with note'),
+    ('li_4', 'Day 7: DM all accepted connections from last week'),
+    ('li_5', 'Comment on 5 PI lawyer posts with 5k+ followers (visibility play)'),
+  ]),
+  ('📧', '12:00 – 1:30pm', 'Email + Instagram', 'green', [
+    ('em_1', 'Run gmail_sender.py — sends today\'s cold email batch (60-80 max)'),
+    ('em_2', 'Instagram: 20 warm approach DMs to PI firm accounts'),
+    ('em_3', 'Reddit: reply to 2-3 posts in r/Lawyertalk or r/lawfirm'),
+    ('em_4', 'Facebook groups: comment on 2 relevant PI law posts'),
+  ]),
+  ('📞', '2:00 – 4:00pm', 'Discovery Calls', 'orange', [
+    ('call_1', 'Run pre-call research 30 min before — check firm website + LinkedIn'),
+    ('call_2', 'Screen share Velaro demo during call — show ROI calc with THEIR numbers'),
+    ('call_3', 'Send proposal within 2 hours of every call'),
+    ('call_4', 'Log call notes in Velaro OS immediately after'),
+  ]),
+  ('✍️', '4:00 – 5:00pm', 'Content + Pipeline', 'purple', [
+    ('cont_1', 'Post today\'s LinkedIn content (copy from Content Queue below)'),
+    ('cont_2', 'Follow up on proposals open 5+ days'),
+    ('cont_3', 'Check Follow-ups page — action everything overdue'),
+    ('cont_4', 'Scrape 20 new leads for tomorrow via Apify / Apollo'),
+    ('cont_5', 'Update pipeline stages for every lead touched today'),
+  ]),
+] %}
+
+<div class="space-y-3 mb-5">
+{% for icon, time, label, color, tasks in blocks %}
+<div class="bg-white rounded-xl border border-gray-100 p-4 time-block" data-block="{{ loop.index }}">
+  <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center gap-2.5">
+      <span class="text-base">{{ icon }}</span>
+      <span class="text-xs font-mono px-2 py-0.5 rounded-full
+        {{ 'bg-blue-50 text-blue-700' if color=='blue'
+           else 'bg-green-50 text-green-700' if color=='green'
+           else 'bg-orange-50 text-orange-600' if color=='orange'
+           else 'bg-purple-50 text-purple-700' }}">{{ time }}</span>
+      <span class="text-sm font-medium text-gray-800">{{ label }}</span>
+    </div>
+    <span class="block-progress text-xs mono text-gray-400">0/{{ tasks|length }}</span>
+  </div>
+  <div class="space-y-1.5">
+  {% for task_id, task_text in tasks %}
+  <label class="flex items-start gap-2.5 cursor-pointer group p-1.5 rounded-lg hover:bg-gray-50 transition-colors">
+    <input type="checkbox" id="task_{{ task_id }}" onchange="saveTask('{{ task_id }}', this.checked, this)"
+      class="mt-0.5 rounded flex-shrink-0 accent-gray-900">
+    <span id="label_{{ task_id }}" class="text-xs text-gray-700 group-hover:text-gray-900 leading-relaxed select-none">{{ task_text }}</span>
+  </label>
+  {% endfor %}
+  </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- Today's LinkedIn Post -->
+<div class="bg-white rounded-xl border border-blue-100 p-4 mb-5" id="todays-post-card">
+  <div class="flex items-center justify-between mb-3">
+    <div class="text-xs font-medium text-blue-700 uppercase tracking-wide flex items-center gap-1.5">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      Today's LinkedIn Post
+    </div>
+    <a href="/content?platform=linkedin" class="text-xs text-blue-600 hover:underline">see all posts →</a>
+  </div>
+  {% if todays_post %}
+  <div class="bg-blue-50 rounded-lg p-3 mb-3">
+    <div class="flex items-center gap-2 mb-2">
+      <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 mono">{{ todays_post['post_type'] or 'linkedin' }}</span>
+      <span class="text-xs text-gray-400">{{ todays_post['scheduled_date'] }}</span>
+      {% if todays_post['posted'] %}<span class="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full ml-auto">✓ posted</span>{% endif %}
+    </div>
+    <pre class="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed max-h-40 overflow-hidden">{{ todays_post['content'][:400] }}{% if todays_post['content']|length > 400 %}...{% endif %}</pre>
+  </div>
+  <div class="flex gap-2">
+    <button data-content="{{ todays_post['content']|e }}" onclick="copy(this.dataset.content, this)" class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Copy Post</button>
+    {% if not todays_post['posted'] %}
+    <button onclick="markPostedFromPlanner({{ todays_post['id'] }}, this)" class="text-xs px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700">Mark as Posted</button>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="text-xs text-gray-400 py-3 text-center">No post scheduled for today — <a href="/content" class="text-blue-600 hover:underline">add one</a></div>
+  {% endif %}
+</div>
+
+<!-- Overdue Leads -->
+{% if overdue_leads %}
+<div class="bg-white rounded-xl border border-amber-200 p-4 mb-5">
+  <div class="text-xs font-medium text-amber-700 mb-3 flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    {{ overdue_leads|length }} leads need action today
+  </div>
+  <div class="grid grid-cols-2 gap-2">
+  {% for lead in overdue_leads %}
+  <a href="/leads/{{ lead.id }}" class="flex items-center justify-between p-2 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors">
+    <div>
+      <div class="text-xs font-medium text-gray-800">{{ lead.name }}</div>
+      <div class="text-xs text-gray-400">{{ lead.company or '—' }}</div>
+    </div>
+    <span class="text-xs px-2 py-0.5 rounded-full stage-{{ lead.pipeline_stage }}">{{ lead.pipeline_stage }}</span>
+  </a>
+  {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- Daily Limits Reference -->
+<div class="bg-white rounded-xl border border-gray-100 p-4">
+  <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Daily Limits — LinkedIn Safe Zone</div>
+  <div class="grid grid-cols-4 gap-3">
+    {% for action, limit in [('Connection Requests','15–20/day'),('DMs to Connections','25–35/day'),('Comments','20–25/day'),('Likes','50–80/day')] %}
+    <div class="text-center p-2 bg-gray-50 rounded-lg">
+      <div class="text-sm font-semibold mono text-gray-800">{{ limit }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">{{ action }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-400 text-center">Cold email max: <span class="mono font-medium text-gray-600">80/day</span> via Listmonk at 14/hr send rate</div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const DATE_KEY = new Date().toISOString().split('T')[0];
+const TOTAL_TASKS = document.querySelectorAll('input[type=checkbox]').length;
+
+function updateProgress() {
+  const checked = document.querySelectorAll('input[type=checkbox]:checked').length;
+  const pct = Math.round((checked / TOTAL_TASKS) * 100);
+  document.getElementById('progress-bar').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-label').textContent = checked + ' / ' + TOTAL_TASKS + ' done';
+
+  // Update block progress counters
+  document.querySelectorAll('.time-block').forEach(block => {
+    const total = block.querySelectorAll('input[type=checkbox]').length;
+    const done = block.querySelectorAll('input[type=checkbox]:checked').length;
+    block.querySelector('.block-progress').textContent = done + '/' + total;
+    if (done === total) {
+      block.style.borderColor = '#d1fae5';
+      block.style.backgroundColor = '#f0fdf4';
+    } else {
+      block.style.borderColor = '';
+      block.style.backgroundColor = '';
+    }
+  });
+}
+
+// Restore saved state
+document.querySelectorAll('input[type=checkbox]').forEach(cb => {
+  const tid = cb.id.replace('task_', '');
+  const key = 'planner_' + DATE_KEY + '_' + tid;
+  const saved = localStorage.getItem(key) === '1';
+  cb.checked = saved;
+  if (saved) applyStrike(tid, true);
+});
+updateProgress();
+
+function applyStrike(id, checked) {
+  const label = document.getElementById('label_' + id);
+  if (!label) return;
+  label.style.textDecoration = checked ? 'line-through' : 'none';
+  label.style.color = checked ? '#9ca3af' : '';
+}
+
+function saveTask(id, checked) {
+  localStorage.setItem('planner_' + DATE_KEY + '_' + id, checked ? '1' : '0');
+  applyStrike(id, checked);
+  updateProgress();
+}
+
+function markPostedFromPlanner(id, btn) {
+  fetch('/content/' + id + '/posted', {method: 'POST'}).then(() => {
+    btn.textContent = '✓ Posted!';
+    btn.disabled = true;
+    btn.classList.remove('bg-green-600','hover:bg-green-700');
+    btn.classList.add('bg-gray-300','text-gray-500');
+  });
+}
+</script>
+{% endblock %}

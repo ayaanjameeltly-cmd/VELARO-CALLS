@@ -1,0 +1,380 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-lg font-semibold">Outreach Scripts</h1>
+    <p class="text-xs text-gray-400 mt-0.5">Fill in the lead details — all scripts update live</p>
+  </div>
+  <button onclick="toggleTeleprompter()" id="tp-btn"
+    class="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700 flex items-center gap-1.5">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.069A1 1 0 0121 8.82v6.36a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+    Teleprompter Mode
+  </button>
+</div>
+
+<!-- Lead inputs -->
+<div class="bg-white border border-gray-100 rounded-xl p-4 mb-5">
+  <div class="grid grid-cols-3 gap-4">
+    <div>
+      <label class="text-xs text-gray-400 block mb-1">Lead first name</label>
+      <input id="inp-name" type="text" placeholder="e.g. Marcus" oninput="updateAll()"
+        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+    </div>
+    <div>
+      <label class="text-xs text-gray-400 block mb-1">Firm name</label>
+      <input id="inp-firm" type="text" placeholder="e.g. Hill Law Firm" oninput="updateAll()"
+        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+    </div>
+    <div>
+      <label class="text-xs text-gray-400 block mb-1">Their post topic (for Day 3 video)</label>
+      <input id="inp-topic" type="text" placeholder="e.g. hiring intake staff" oninput="updateAll()"
+        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-2 gap-4" id="script-grid">
+
+  <!-- CONNECTION REQUEST -->
+  <div class="bg-white border border-gray-100 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-gray-700">Connection Request Note</span>
+        <span class="ml-2 text-xs text-gray-400">Day 0 · send with request</span>
+      </div>
+      <button onclick="copyScript('connect-script', this)"
+        class="text-xs px-2.5 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Copy</button>
+    </div>
+    <div class="px-4 py-4">
+      <p id="connect-script" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></p>
+      <p class="text-xs text-gray-400 mt-3">Keep under 300 characters. No pitch. Reference something real.</p>
+    </div>
+  </div>
+
+  <!-- VOICE NOTE -->
+  <div class="bg-white border border-violet-100 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-violet-100 flex items-center justify-between bg-violet-50">
+      <div>
+        <span class="text-xs font-semibold text-violet-800">Voice Note Script</span>
+        <span class="ml-2 text-xs text-violet-500">Day 0 · record immediately after connect accepts</span>
+      </div>
+      <button onclick="copyScript('voice-script', this)"
+        class="text-xs px-2.5 py-1 border border-violet-200 rounded-lg hover:bg-violet-100 text-violet-700">Copy</button>
+    </div>
+    <div class="px-4 py-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-2 h-2 rounded-full bg-violet-400"></span>
+        <span class="text-xs text-gray-400">~45 seconds · calm, confident pace · no selling energy</span>
+      </div>
+      <p id="voice-script" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></p>
+    </div>
+  </div>
+
+  <!-- DAY 3 FOLLOW-UP TEXT -->
+  <div class="bg-white border border-gray-100 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-gray-700">Day 3 — Soft Text Follow-up</span>
+        <span class="ml-2 text-xs text-gray-400">LinkedIn DM · 3 days after voice note</span>
+      </div>
+      <button onclick="copyScript('day3-script', this)"
+        class="text-xs px-2.5 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Copy</button>
+    </div>
+    <div class="px-4 py-4">
+      <p id="day3-script" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></p>
+      <p class="text-xs text-gray-400 mt-3">No pitch. Just checking it landed. End on a question.</p>
+    </div>
+  </div>
+
+  <!-- VIDEO SCRIPT -->
+  <div class="bg-white border border-blue-100 rounded-xl overflow-hidden col-span-2">
+    <div class="px-4 py-3 border-b border-blue-100 flex items-center justify-between bg-blue-50">
+      <div>
+        <span class="text-xs font-semibold text-blue-800">Day 7 — Personalised Video Script</span>
+        <span class="ml-2 text-xs text-blue-500">Screen-record · 90 sec max · show their site + demo</span>
+      </div>
+      <button onclick="copyScript('video-script', this)"
+        class="text-xs px-2.5 py-1 border border-blue-200 rounded-lg hover:bg-blue-100 text-blue-700">Copy</button>
+    </div>
+    <div class="px-4 py-5">
+      <div class="grid grid-cols-3 gap-4 mb-4 text-xs">
+        <div class="bg-blue-50 rounded-lg px-3 py-2">
+          <div class="font-semibold text-blue-700 mb-1">Before you hit record</div>
+          <ul class="text-blue-600 space-y-0.5">
+            <li>• Open their firm website</li>
+            <li>• Open demo in new tab: <span class="mono">localhost:5050/demo?firm=<span class="inp-firm-inline font-semibold">[firm]</span></span></li>
+            <li>• Open Loom or QuickTime (no camera, screen only)</li>
+            <li>• Record in one take — imperfect is more authentic</li>
+          </ul>
+        </div>
+        <div class="bg-gray-50 rounded-lg px-3 py-2">
+          <div class="font-semibold text-gray-700 mb-1">Screen sequence</div>
+          <ol class="text-gray-600 space-y-0.5">
+            <li>① Their website (0:00–0:20)</li>
+            <li>② Their contact form (0:20–0:35)</li>
+            <li>③ Switch to demo tab (0:35–1:10)</li>
+            <li>④ Run simulation live (1:10–1:25)</li>
+            <li>⑤ End on question (1:25–1:30)</li>
+          </ol>
+        </div>
+        <div class="bg-gray-50 rounded-lg px-3 py-2">
+          <div class="font-semibold text-gray-700 mb-1">Send it as</div>
+          <ul class="text-gray-600 space-y-0.5">
+            <li>• LinkedIn DM with Loom link</li>
+            <li>• Subject: <span class="italic">quick 90 seconds for <span class="inp-firm-inline font-semibold">[firm]</span></span></li>
+            <li>• No email (spam) — LinkedIn only</li>
+            <li>• Don't explain what's in it — let them click</li>
+          </ul>
+        </div>
+      </div>
+      <div class="border-t border-blue-100 pt-4">
+        <p id="video-script" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- HEYGEN AVATAR VIDEO -->
+  <div class="bg-white border border-emerald-100 rounded-xl overflow-hidden col-span-2">
+    <div class="px-4 py-3 border-b border-emerald-100 flex items-center justify-between bg-emerald-50">
+      <div class="flex items-center gap-3">
+        <div>
+          <span class="text-xs font-semibold text-emerald-800">HeyGen Avatar Video Script</span>
+          <span class="ml-2 text-xs text-emerald-500">Day 7 · AI avatar · no camera needed · paste directly into HeyGen</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="copyScript('heygen-script', this)"
+          class="text-xs px-2.5 py-1 border border-emerald-300 rounded-lg hover:bg-emerald-100 text-emerald-700 font-medium">
+          Copy for HeyGen
+        </button>
+      </div>
+    </div>
+    <div class="px-4 py-5">
+      <div class="grid grid-cols-3 gap-4 mb-4 text-xs">
+        <div class="bg-emerald-50 rounded-lg px-3 py-2.5">
+          <div class="font-semibold text-emerald-800 mb-1.5">HeyGen setup</div>
+          <ul class="text-emerald-700 space-y-1">
+            <li>① heygen.com → Create Video → Avatar</li>
+            <li>② Pick your avatar (or upload photo)</li>
+            <li>③ Voice: English US, natural pace</li>
+            <li>④ Paste script below → Generate</li>
+            <li>⑤ Download → upload to LinkedIn DM</li>
+          </ul>
+        </div>
+        <div class="bg-gray-50 rounded-lg px-3 py-2.5">
+          <div class="font-semibold text-gray-700 mb-1.5">Script rules for HeyGen</div>
+          <ul class="text-gray-600 space-y-1">
+            <li>• No brackets or stage directions</li>
+            <li>• No URLs — avatar will read them aloud</li>
+            <li>• Keep under 90 seconds (~200 words)</li>
+            <li>• Use pauses: add a comma or period</li>
+            <li>• Spell out numbers: "forty two" not "42"</li>
+          </ul>
+        </div>
+        <div class="bg-gray-50 rounded-lg px-3 py-2.5">
+          <div class="font-semibold text-gray-700 mb-1.5">Send it as</div>
+          <ul class="text-gray-600 space-y-1">
+            <li>• LinkedIn DM — attach video directly</li>
+            <li>• Message: "Built this for you — 60 seconds"</li>
+            <li>• No Loom link needed, native video plays inline</li>
+            <li>• Do NOT send by email — spam risk</li>
+            <li>• Works as Day 7 OR cold first-touch</li>
+          </ul>
+        </div>
+      </div>
+      <div class="border-t border-emerald-100 pt-4">
+        <div class="flex items-center gap-2 mb-2">
+          <span class="text-xs text-gray-400">~60–75 seconds · ~170 words · pure spoken word</span>
+          <span id="heygen-word-count" class="text-xs text-gray-400 mono ml-auto"></span>
+        </div>
+        <p id="heygen-script" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DAY 14 BREAKUP -->
+  <div class="bg-white border border-gray-100 rounded-xl overflow-hidden col-span-2">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-gray-700">Day 14 — Breakup Message</span>
+        <span class="ml-2 text-xs text-gray-400">LinkedIn DM · last message · leave door open</span>
+      </div>
+      <button onclick="copyScript('day14-script', this)"
+        class="text-xs px-2.5 py-1 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600">Copy</button>
+    </div>
+    <div class="px-4 py-4">
+      <p id="day14-script" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap"></p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Teleprompter overlay -->
+<div id="tp-overlay" class="hidden fixed inset-0 bg-gray-950 z-50 flex flex-col p-12 overflow-y-auto">
+  <div class="flex items-center justify-between mb-8">
+    <div class="flex items-center gap-4">
+      <span class="text-white text-sm font-semibold" id="tp-label">Voice Note</span>
+      <div class="flex gap-2">
+        <button onclick="switchTP('voice')"  id="tp-voice-btn"  class="text-xs px-3 py-1.5 rounded-lg bg-violet-600 text-white">Voice Note</button>
+        <button onclick="switchTP('video')"  id="tp-video-btn"  class="text-xs px-3 py-1.5 rounded-lg text-gray-400 hover:bg-gray-800">Video Script</button>
+        <button onclick="switchTP('heygen')" id="tp-heygen-btn" class="text-xs px-3 py-1.5 rounded-lg text-gray-400 hover:bg-gray-800">HeyGen Avatar</button>
+      </div>
+    </div>
+    <button onclick="toggleTeleprompter()" class="text-gray-400 hover:text-white text-sm">✕ Close</button>
+  </div>
+  <p id="tp-text" class="text-white leading-loose text-2xl max-w-3xl mx-auto whitespace-pre-wrap"></p>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const SCRIPTS = {
+  connect: (name, firm, topic) =>
+`Saw your work at ${firm} — worth connecting.`,
+
+  voice: (name, firm, topic) =>
+`Hey ${name} — Ayaan here.
+
+We only take on one or two firms a month — and ${firm} is on my radar this month.
+
+I build AI intake systems that handle after-hours case inquiries — every call answered automatically, every web form responded to in under 60 seconds, cases pre-qualified before an attorney needs to get involved.
+
+The firms we work with are recovering cases they didn't even know they were losing.
+
+Curious how ${firm} currently handles calls that come in after hours.`,
+
+  day3: (name, firm, topic) =>
+`Hey ${name} — no pressure at all.
+
+Just wanted to check the voice note landed okay. The after-hours gap is something most PI firms don't see until someone shows them the number.
+
+Worth a quick look if you get a minute?`,
+
+  video: (name, firm, topic) =>
+`[ON SCREEN: ${firm}'s website]
+
+Hey ${name} — Ayaan here from Velaro.
+
+I'm on the ${firm} website right now.
+
+[SCROLL TO CONTACT FORM]
+
+Right here — your contact form. If someone fills this out at 10pm tonight after a car accident, what happens?
+
+Most firms: it sits until someone sees it in the morning.
+
+[SWITCH TO DEMO TAB — localhost:5050/demo?firm=${firm}]
+
+This is what we build. Same inquiry, 9:47pm — watch the right side.
+
+[HIT RUN SIMULATION — let it play through the 42-second timer]
+
+42 seconds. Caller qualified. Consultation booked to the attorney's calendar. No staff involved. That case doesn't go to the next firm on Google.
+
+The firms we work with are recovering 10 to 20 cases a month they were already losing — from ads they were already paying for.
+
+${name}, I built this specifically for PI practices — it knows what to ask. Accident type, injuries, fault, insurance. Serious cases go straight to your calendar.
+
+Quick question to close — how many inquiries a week does ${firm} miss after 5pm right now?`,
+
+  day14: (name, firm, topic) =>
+`Hey ${name} — I'll leave it here.
+
+Clearly not the right timing and that's completely fine.
+
+One thing worth saying: the PI firms fixing their intake response right now are quietly pulling ahead of firms running the same ad spend and getting the same leads.
+
+If that ever becomes a priority at ${firm}, my calendar is always open.
+
+All the best.`,
+
+  heygen: (name, firm, topic) =>
+`Hey ${name}, Ayaan here from Velaro.
+
+I'm reaching out specifically about ${firm} because I looked at your intake setup and there's something worth showing you.
+
+When a potential client gets in an accident at nine PM tonight and fills out your contact form, that lead sits until someone at the firm sees it in the morning.
+
+By then, they've already hired whoever responded first.
+
+I built a system for PI firms that responds to every new inquiry in under sixty seconds, automatically, around the clock. The caller gets pre-qualified on the spot. Serious cases go straight to the attorney's calendar. No staff involved.
+
+The firms we work with are recovering ten to twenty cases a month they were already losing, from the same ad spend they were already running.
+
+I put together a quick two-minute demo built specifically for ${firm}. It takes thirty seconds to see whether this is worth a conversation.
+
+Link is in the message. Worth a look.`
+};
+
+function n() { return document.getElementById('inp-name').value.trim() || '[Name]'; }
+function f() { return document.getElementById('inp-firm').value.trim() || '[Firm Name]'; }
+function t() { return document.getElementById('inp-topic').value.trim() || '[their post topic]'; }
+
+function updateAll() {
+  document.getElementById('connect-script').textContent = SCRIPTS.connect(n(), f(), t());
+  document.getElementById('voice-script').textContent   = SCRIPTS.voice(n(), f(), t());
+  document.getElementById('day3-script').textContent    = SCRIPTS.day3(n(), f(), t());
+  document.getElementById('video-script').textContent   = SCRIPTS.video(n(), f(), t());
+  document.getElementById('heygen-script').textContent  = SCRIPTS.heygen(n(), f(), t());
+  document.getElementById('day14-script').textContent   = SCRIPTS.day14(n(), f(), t());
+  // HeyGen word count
+  const heygenText = SCRIPTS.heygen(n(), f(), t());
+  const wordCount = heygenText.trim().split(/\s+/).length;
+  const estSecs = Math.round(wordCount / 2.5);
+  const wc = document.getElementById('heygen-word-count');
+  if (wc) wc.textContent = `${wordCount} words · ~${estSecs}s`;
+  // update inline firm name hints
+  document.querySelectorAll('.inp-firm-inline').forEach(el => el.textContent = f());
+  // sync teleprompter if open
+  const tpOverlay = document.getElementById('tp-overlay');
+  if (!tpOverlay.classList.contains('hidden')) {
+    const cur = tpOverlay.dataset.current || 'voice';
+    document.getElementById('tp-text').textContent = SCRIPTS[cur](n(), f(), t());
+  }
+}
+
+function copyScript(id, btn) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('text-green-600', 'border-green-300');
+    setTimeout(() => { btn.textContent = orig; btn.classList.remove('text-green-600','border-green-300'); }, 2000);
+  });
+}
+
+let tpActive = false;
+function toggleTeleprompter() {
+  const overlay = document.getElementById('tp-overlay');
+  tpActive = !tpActive;
+  if (tpActive) {
+    overlay.classList.remove('hidden');
+    overlay.dataset.current = 'voice';
+    document.getElementById('tp-text').textContent = SCRIPTS.voice(n(), f(), t());
+    document.getElementById('tp-label').textContent = 'Voice Note Script';
+  } else {
+    overlay.classList.add('hidden');
+  }
+}
+function switchTP(which) {
+  const overlay = document.getElementById('tp-overlay');
+  overlay.dataset.current = which;
+  document.getElementById('tp-text').textContent = SCRIPTS[which](n(), f(), t());
+  const labels = { voice: 'Voice Note Script', video: 'Video Script', heygen: 'HeyGen Avatar Script' };
+  document.getElementById('tp-label').textContent = labels[which] || which;
+  const btns = { voice: 'tp-voice-btn', video: 'tp-video-btn', heygen: 'tp-heygen-btn' };
+  const colors = { voice: 'bg-violet-600', video: 'bg-blue-600', heygen: 'bg-emerald-600' };
+  Object.entries(btns).forEach(([k, id]) => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.className = k === which
+      ? `text-xs px-3 py-1.5 rounded-lg ${colors[k]} text-white`
+      : 'text-xs px-3 py-1.5 rounded-lg text-gray-400 hover:bg-gray-800';
+  });
+}
+
+// Init with placeholders
+updateAll();
+</script>
+{% endblock %}

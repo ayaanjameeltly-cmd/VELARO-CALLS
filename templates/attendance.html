@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-xl font-semibold text-gray-900">Attendance</h1>
+    <p class="text-xs text-gray-500 mt-0.5">Your work log — hours, days, streaks</p>
+  </div>
+  <div id="clock-display" class="mono text-sm text-gray-500"></div>
+</div>
+
+<!-- Stats row -->
+<div class="grid grid-cols-3 md:grid-cols-6 gap-3 mb-5">
+  {% for label, val, unit, color in [
+    ('Today', today_hours, 'hrs', 'blue'),
+    ('This Week', week_hours, 'hrs', 'indigo'),
+    ('This Month', month_hours, 'hrs', 'violet'),
+    ('Days This Month', month_days, 'days', 'green'),
+    ('Total Hours', total_hours, 'hrs', 'teal'),
+    ('Streak', streak, 'days', 'orange'),
+  ] %}
+  <div class="bg-white border border-gray-200 rounded-xl p-4 text-center">
+    <div class="text-xs text-gray-400 mb-1">{{ label }}</div>
+    <div class="text-2xl font-semibold mono
+      {{ 'text-blue-600' if color=='blue' else
+         'text-indigo-600' if color=='indigo' else
+         'text-violet-600' if color=='violet' else
+         'text-green-600' if color=='green' else
+         'text-teal-600' if color=='teal' else
+         'text-orange-500' }}">{{ val }}{% if label == 'Streak' and val > 0 %} 🔥{% endif %}</div>
+    <div class="text-xs text-gray-400 mt-0.5">{{ unit }}</div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Clock in/out + manual log -->
+<div class="grid grid-cols-2 gap-4 mb-5">
+
+  <!-- Clock in/out -->
+  <div class="bg-white border border-gray-200 rounded-xl p-5">
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Clock In / Out</div>
+    {% if active %}
+    <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+      <div class="text-xs text-green-700 font-medium">Currently clocked in</div>
+      <div class="mono text-xs text-green-600 mt-0.5">since {{ active.clock_in[11:16] }}</div>
+      <div id="live-timer" class="mono text-lg font-semibold text-green-700 mt-1">—</div>
+    </div>
+    <button onclick="clockAction()" id="clock-btn"
+      class="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">
+      Clock Out
+    </button>
+    {% else %}
+    <div class="mb-4 p-3 bg-gray-50 rounded-lg text-center">
+      <div class="text-xs text-gray-400">Not clocked in</div>
+      {% if today_hours > 0 %}
+      <div class="text-xs text-gray-500 mt-1">{{ today_hours }}h logged today</div>
+      {% endif %}
+    </div>
+    <button onclick="clockAction()" id="clock-btn"
+      class="w-full py-2.5 bg-gray-900 hover:bg-gray-700 text-white rounded-xl text-sm font-medium transition-colors">
+      Clock In
+    </button>
+    {% endif %}
+    <div id="clock-status" class="text-xs text-gray-400 text-center mt-2"></div>
+  </div>
+
+  <!-- Manual log -->
+  <div class="bg-white border border-gray-200 rounded-xl p-5">
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Log Hours Manually</div>
+    <div class="space-y-3">
+      <div class="grid grid-cols-2 gap-2">
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Date</label>
+          <input type="date" id="log-date" value="{{ today }}"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        </div>
+        <div>
+          <label class="text-xs text-gray-400 block mb-1">Hours</label>
+          <input type="number" id="log-hours" step="0.5" min="0.5" max="24" placeholder="4.5"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs text-gray-400 block mb-1">Notes (optional)</label>
+        <input type="text" id="log-notes" placeholder="What did you work on?"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+      </div>
+      <button type="button" onclick="logManual()"
+        class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-medium transition-colors">
+        + Add Log Entry
+      </button>
+      <div id="log-status" class="text-xs text-center text-gray-400"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Heatmap -->
+<div class="bg-white border border-gray-200 rounded-xl p-5 mb-5">
+  <div class="flex items-center justify-between mb-4">
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Last 12 Weeks</div>
+    <div class="flex items-center gap-1.5 text-xs text-gray-400">
+      <span>Less</span>
+      {% for cls in ['bg-gray-100','bg-indigo-200','bg-indigo-400','bg-indigo-600','bg-indigo-800'] %}
+      <div class="w-3 h-3 rounded-sm {{ cls }}"></div>
+      {% endfor %}
+      <span>More</span>
+    </div>
+  </div>
+  <div class="flex gap-1" id="heatmap-grid">
+    {% set ns = namespace(day_offset=0) %}
+    {% for week in range(12) %}
+    <div class="flex flex-col gap-1">
+      {% for dow in range(7) %}
+      {% set offset = (11 - week) * 7 + (6 - dow) %}
+      {% set cell_date = (now() - timedelta(days=offset)).strftime('%Y-%m-%d') if now else '' %}
+      {% set h = heatmap.get(cell_date, 0) %}
+      {% set intensity = 'bg-gray-100' if h == 0 else 'bg-indigo-200' if h < 2 else 'bg-indigo-400' if h < 4 else 'bg-indigo-600' if h < 6 else 'bg-indigo-800' %}
+      <div class="w-3 h-3 rounded-sm {{ intensity }} cursor-default"
+        title="{{ cell_date }}: {{ h }}h"></div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  <div class="flex gap-4 mt-3 text-xs text-gray-400">
+    {% set days_ago_labels = [77, 56, 35, 14, 0] %}
+    {% for d in days_ago_labels %}
+    <span>{{ (now() - timedelta(days=d)).strftime('%b %d') if now else '' }}</span>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Log table -->
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+  <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Work Log</div>
+    <span class="text-xs text-gray-400">{{ recent|length }} entries</span>
+  </div>
+  {% if recent %}
+  <table class="w-full">
+    <thead>
+      <tr class="border-b border-gray-50">
+        <th class="text-left text-xs text-gray-400 font-normal px-5 py-2">Date</th>
+        <th class="text-left text-xs text-gray-400 font-normal px-3 py-2">Clock In</th>
+        <th class="text-left text-xs text-gray-400 font-normal px-3 py-2">Clock Out</th>
+        <th class="text-left text-xs text-gray-400 font-normal px-3 py-2">Hours</th>
+        <th class="text-left text-xs text-gray-400 font-normal px-3 py-2">Notes</th>
+        <th class="px-3 py-2"></th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-50">
+    {% for s in recent %}
+    <tr id="row-{{ s.id }}" class="hover:bg-gray-50 transition-colors">
+      <td class="px-5 py-2.5 text-xs font-medium text-gray-700">{{ s.date }}</td>
+      <td class="px-3 py-2.5 text-xs mono text-gray-500">{{ s.clock_in[11:16] if s.clock_in else '—' }}</td>
+      <td class="px-3 py-2.5 text-xs mono text-gray-500">
+        {% if s.clock_out %}{{ s.clock_out[11:16] }}{% else %}<span class="text-green-600 font-medium">active</span>{% endif %}
+      </td>
+      <td class="px-3 py-2.5">
+        <span class="text-xs font-semibold mono {{ 'text-green-600' if s.hours >= 6 else 'text-indigo-600' if s.hours >= 3 else 'text-gray-600' }}">
+          {{ '%.1f'|format(s.hours) }}h
+        </span>
+      </td>
+      <td class="px-3 py-2.5 text-xs text-gray-400">{{ s.notes or '—' }}</td>
+      <td class="px-3 py-2.5">
+        <button type="button" onclick="deleteEntry({{ s.id }})"
+          class="text-gray-300 hover:text-red-500 transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="px-5 py-10 text-center text-xs text-gray-400">No work sessions yet — clock in to start tracking</div>
+  {% endif %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+// Live clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock-display').textContent =
+    now.toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true}) + ' IST';
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// Live session timer
+{% if active %}
+const clockedInAt = new Date('{{ active.clock_in }}');
+function updateTimer() {
+  const diff = Math.floor((Date.now() - clockedInAt) / 1000);
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+  document.getElementById('live-timer').textContent =
+    `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+updateTimer(); setInterval(updateTimer, 1000);
+{% endif %}
+
+async function clockAction() {
+  const btn = document.getElementById('clock-btn');
+  btn.disabled = true;
+  btn.textContent = '...';
+  const res  = await fetch('/api/attendance/clock', {method:'POST'});
+  const data = await res.json();
+  if (data.ok) {
+    const status = document.getElementById('clock-status');
+    if (data.action === 'out') {
+      status.textContent = `Clocked out — ${data.hours}h logged`;
+      status.className = 'text-xs text-green-600 text-center mt-2 font-medium';
+    } else {
+      status.textContent = 'Clocked in — timer running';
+      status.className = 'text-xs text-indigo-600 text-center mt-2 font-medium';
+    }
+    setTimeout(() => location.reload(), 1000);
+  }
+}
+
+async function logManual() {
+  const date  = document.getElementById('log-date').value;
+  const hours = parseFloat(document.getElementById('log-hours').value);
+  const notes = document.getElementById('log-notes').value;
+  const status = document.getElementById('log-status');
+  if (!date || !hours || hours <= 0) {
+    status.textContent = 'Enter date and hours';
+    status.className = 'text-xs text-center text-red-500';
+    return;
+  }
+  const res  = await fetch('/api/attendance/log', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({date, hours, notes})
+  });
+  const data = await res.json();
+  if (data.ok) {
+    status.textContent = `✓ ${hours}h logged for ${date}`;
+    status.className = 'text-xs text-center text-green-600 font-medium';
+    setTimeout(() => location.reload(), 800);
+  }
+}
+
+async function deleteEntry(id) {
+  await fetch(`/api/attendance/delete/${id}`, {method:'POST'});
+  const row = document.getElementById(`row-${id}`);
+  if (row) { row.style.opacity='0'; setTimeout(()=>{row.remove()},300); }
+}
+</script>
+{% endblock %}

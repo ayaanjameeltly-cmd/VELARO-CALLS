@@ -1,0 +1,297 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-lg font-semibold">Post Presets</h1>
+    <p class="text-xs text-gray-400 mt-0.5">Fill in name + firm — all templates update instantly. No AI, no tokens.</p>
+  </div>
+</div>
+
+<!-- Live inputs -->
+<div class="bg-white border border-gray-100 rounded-xl p-4 mb-5">
+  <div class="grid grid-cols-4 gap-4">
+    <div>
+      <label class="text-xs text-gray-400 block mb-1">First name</label>
+      <input id="v-name" type="text" placeholder="Marcus" oninput="updateAll()"
+        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+    </div>
+    <div>
+      <label class="text-xs text-gray-400 block mb-1">Firm name</label>
+      <input id="v-firm" type="text" placeholder="Hill Law Firm" oninput="updateAll()"
+        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+    </div>
+    <div>
+      <label class="text-xs text-gray-400 block mb-1">City</label>
+      <input id="v-city" type="text" placeholder="Dallas" oninput="updateAll()"
+        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+    </div>
+    <div>
+      <label class="text-xs text-gray-400 block mb-1">Their post topic (optional)</label>
+      <input id="v-topic" type="text" placeholder="hiring intake staff" oninput="updateAll()"
+        class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-cols-2 gap-4">
+
+  <!-- PRESET 1: LinkedIn Text Post (observation/story) -->
+  <div class="bg-white border border-gray-100 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-gray-700">Preset 1 — LinkedIn Text Post</span>
+        <span class="ml-2 text-xs text-gray-400">observation · 150–200 words · no CTA</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="loadPreset(1)"
+          class="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">Edit</button>
+        <button onclick="copyEl('preset-1', this)"
+          class="text-xs px-2.5 py-1 bg-gray-900 text-white rounded-lg hover:bg-gray-700">Copy</button>
+      </div>
+    </div>
+    <div class="px-4 py-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">LinkedIn text post</span>
+        <span class="text-xs text-gray-400">Hook must be first 2 lines — that's the preview</span>
+      </div>
+      <pre id="preset-1" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-sans"></pre>
+    </div>
+  </div>
+
+  <!-- PRESET 2: Personalized Video DM caption -->
+  <div class="bg-white border border-blue-100 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-blue-100 flex items-center justify-between bg-blue-50">
+      <div>
+        <span class="text-xs font-semibold text-blue-800">Preset 2 — Video DM Caption</span>
+        <span class="ml-2 text-xs text-blue-500">send with your Loom screen-record · Day 7</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="loadPreset(2)"
+          class="text-xs px-2 py-1 border border-blue-200 rounded-lg text-blue-600 hover:bg-blue-50">Edit</button>
+        <button onclick="copyEl('preset-2', this)"
+          class="text-xs px-2.5 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Copy</button>
+      </div>
+    </div>
+    <div class="px-4 py-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full border border-blue-100">LinkedIn DM</span>
+        <span class="text-xs text-gray-400">paste this + attach Loom link below it</span>
+      </div>
+      <pre id="preset-2" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-sans"></pre>
+    </div>
+  </div>
+
+  <!-- PRESET 3: Comment → DM (warm outreach) -->
+  <div class="bg-white border border-violet-100 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-violet-100 flex items-center justify-between bg-violet-50">
+      <div>
+        <span class="text-xs font-semibold text-violet-800">Preset 3 — Post Comment</span>
+        <span class="ml-2 text-xs text-violet-500">Day 2 · leave on their LinkedIn post · never pitch</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="loadPreset(3)"
+          class="text-xs px-2 py-1 border border-violet-200 rounded-lg text-violet-600 hover:bg-violet-50">Edit</button>
+        <button onclick="copyEl('preset-3', this)"
+          class="text-xs px-2.5 py-1 bg-violet-600 text-white rounded-lg hover:bg-violet-700">Copy</button>
+      </div>
+    </div>
+    <div class="px-4 py-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-xs bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full border border-violet-100">LinkedIn comment</span>
+        <span class="text-xs text-gray-400">sounds like a peer, not a vendor</span>
+      </div>
+      <pre id="preset-3" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-sans"></pre>
+    </div>
+  </div>
+
+  <!-- PRESET 4: Day 3 soft text follow-up DM -->
+  <div class="bg-white border border-gray-100 rounded-xl overflow-hidden">
+    <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div>
+        <span class="text-xs font-semibold text-gray-700">Preset 4 — Day 3 Follow-up DM</span>
+        <span class="ml-2 text-xs text-gray-400">3 days after voice note · soft check-in</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="loadPreset(4)"
+          class="text-xs px-2 py-1 border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">Edit</button>
+        <button onclick="copyEl('preset-4', this)"
+          class="text-xs px-2.5 py-1 bg-gray-900 text-white rounded-lg hover:bg-gray-700">Copy</button>
+      </div>
+    </div>
+    <div class="px-4 py-4">
+      <pre id="preset-4" class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap font-sans"></pre>
+    </div>
+  </div>
+
+</div>
+
+<!-- Edit overlay -->
+<div id="edit-overlay" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6">
+  <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl">
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+      <span class="font-semibold text-sm" id="edit-title">Edit Preset</span>
+      <button onclick="closeEdit()" class="text-gray-400 hover:text-gray-700">✕</button>
+    </div>
+    <div class="p-5">
+      <p class="text-xs text-gray-400 mb-3">
+        Variables: <code class="bg-gray-100 px-1 rounded">{{name}}</code>
+        <code class="bg-gray-100 px-1 rounded ml-1">{{firm}}</code>
+        <code class="bg-gray-100 px-1 rounded ml-1">{{city}}</code>
+        <code class="bg-gray-100 px-1 rounded ml-1">{{topic}}</code>
+      </p>
+      <textarea id="edit-textarea" rows="16"
+        class="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono focus:outline-none focus:border-gray-400 resize-none"></textarea>
+    </div>
+    <div class="flex items-center gap-3 px-5 py-4 border-t border-gray-100">
+      <button onclick="savePreset()"
+        class="px-4 py-2 bg-gray-900 text-white text-sm rounded-xl hover:bg-gray-700">Save changes</button>
+      <button onclick="resetPreset()"
+        class="px-4 py-2 border border-gray-200 text-gray-600 text-sm rounded-xl hover:bg-gray-50">Reset to default</button>
+      <button onclick="closeEdit()" class="ml-auto text-sm text-gray-400 hover:text-gray-600">Cancel</button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+// Default templates (variables: {{name}}, {{firm}}, {{city}}, {{topic}})
+const DEFAULTS = {
+  1: `Called {{firm}} last night at 10:07 PM.
+
+Went to voicemail.
+
+This isn't a dig at {{firm}}. It's what happens at most PI firms after hours.
+
+Someone got in an accident. They're scared. They search for an attorney, call the top three results.
+
+The firm that picks up gets the case.
+
+Here's the math for a firm doing 5–10 intakes a week:
+— 40–60% of PI inquiries come outside business hours
+— First respondent wins 70%+ of those cases
+— Average PI case value: $25,000–$80,000
+
+That's not a staffing problem. That's a systems problem.
+
+The firms we work with fixed it with AI — not chatbots, actual intake AI that qualifies callers, captures case details, and books the consultation automatically.
+
+No case left on the table because nobody picked up.`,
+
+  2: `{{name}} — made you something.
+
+I'm on the {{firm}} website right now in this video. Took me 4 minutes.
+
+[Loom link]
+
+One question at the end I'd genuinely love your answer to.`,
+
+  3: `{{topic_response}}
+
+Saw this happen with a firm in {{city}} recently. Different numbers, same underlying problem. Once they looked at the response-time data it was pretty clear where the leak was.`,
+
+  4: `{{name}} — no pressure at all.
+
+Just checking the voice note landed okay. Not always easy to hear those in the LinkedIn app.
+
+Genuine question if you have 30 seconds: how does {{firm}} currently handle calls that come in after 6pm?`,
+};
+
+// Load from localStorage or use defaults
+let PRESETS = {};
+function loadPresets() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('velaro_presets') || '{}');
+    for (let i = 1; i <= 4; i++) PRESETS[i] = saved[i] || DEFAULTS[i];
+  } catch(e) {
+    for (let i = 1; i <= 4; i++) PRESETS[i] = DEFAULTS[i];
+  }
+}
+function savePresets() {
+  localStorage.setItem('velaro_presets', JSON.stringify(PRESETS));
+}
+
+function n() { return document.getElementById('v-name').value.trim() || '[Name]'; }
+function f() { return document.getElementById('v-firm').value.trim() || '[Firm Name]'; }
+function c() { return document.getElementById('v-city').value.trim() || '[City]'; }
+function t() { return document.getElementById('v-topic').value.trim() || 'hiring intake staff'; }
+
+// Topic-based comment responses for preset 3
+function topicResponse() {
+  const topic = t().toLowerCase();
+  if (topic.includes('hir') || topic.includes('staff') || topic.includes('intake'))
+    return 'We went a different direction for a client facing this — automated the intake side instead. Saved them $4k/month in staffing and honestly handled more volume. Happy to share how if useful.';
+  if (topic.includes('miss') || topic.includes('call') || topic.includes('after'))
+    return 'The after-hours gap is brutal in PI. Someone gets in an accident at 9pm, calls three firms, books with whoever picks up first. We solved this for a firm recently — the numbers were eye-opening.';
+  if (topic.includes('ad') || topic.includes('lead') || topic.includes('quality'))
+    return "Interesting. What we found is it's rarely the leads — it's the 2-hour response window that kills conversions. Tested this properly with a firm and the difference was significant.";
+  if (topic.includes('grow') || topic.includes('scal'))
+    return "Scaling intake without losing quality is the hardest part of PI growth. Most firms solve it by hiring more staff when the fix is usually in the systems underneath.";
+  return "This is exactly where a client of ours was — leads coming in but the intake side couldn't keep up. Once the response system was fixed, qualified consultations went up significantly. You're identifying the right problem.";
+}
+
+function fill(template) {
+  return template
+    .replace(/{{name}}/g, n())
+    .replace(/{{firm}}/g, f())
+    .replace(/{{city}}/g, c())
+    .replace(/{{topic}}/g, t())
+    .replace(/{{topic_response}}/g, topicResponse());
+}
+
+function updateAll() {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById(`preset-${i}`);
+    if (el) el.textContent = fill(PRESETS[i]);
+  }
+}
+
+function copyEl(id, btn) {
+  const text = document.getElementById(id).textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('bg-green-600');
+    btn.classList.remove('bg-gray-900','bg-blue-600','bg-violet-600');
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.classList.remove('bg-green-600');
+      if (id.includes('1') || id.includes('4')) btn.classList.add('bg-gray-900');
+      else if (id.includes('2')) btn.classList.add('bg-blue-600');
+      else btn.classList.add('bg-violet-600');
+    }, 2000);
+  });
+}
+
+let editingPreset = null;
+function loadPreset(num) {
+  editingPreset = num;
+  document.getElementById('edit-title').textContent = `Edit Preset ${num}`;
+  document.getElementById('edit-textarea').value = PRESETS[num];
+  document.getElementById('edit-overlay').classList.remove('hidden');
+}
+function closeEdit() {
+  document.getElementById('edit-overlay').classList.add('hidden');
+  editingPreset = null;
+}
+function savePreset() {
+  if (!editingPreset) return;
+  PRESETS[editingPreset] = document.getElementById('edit-textarea').value;
+  savePresets();
+  updateAll();
+  closeEdit();
+}
+function resetPreset() {
+  if (!editingPreset) return;
+  PRESETS[editingPreset] = DEFAULTS[editingPreset];
+  document.getElementById('edit-textarea').value = DEFAULTS[editingPreset];
+  savePresets();
+  updateAll();
+}
+
+// Init
+loadPresets();
+updateAll();
+</script>
+{% endblock %}

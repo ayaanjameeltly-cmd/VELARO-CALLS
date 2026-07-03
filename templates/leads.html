@@ -1,0 +1,483 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div class="flex items-center gap-3">
+    <h1 class="text-lg font-medium">Leads <span class="text-gray-400 mono text-sm">({{ total }})</span></h1>
+    {% if today_count > 0 %}
+    <span class="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-medium">+{{ today_count }} today</span>
+    {% endif %}
+    {% if needs_research_count > 0 %}
+    <a href="/leads?needs_research=1" class="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium hover:bg-amber-100">{{ needs_research_count }} need research</a>
+    {% endif %}
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="/export/leads" class="px-3 py-1.5 border border-gray-200 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-50 flex items-center gap-1.5">
+      ↓ Export All ({{ total_leads }})
+    </a>
+    <a href="/leads/add" class="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-medium hover:bg-gray-700">+ Add Lead</a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="bg-white rounded-xl border border-gray-100 mb-4 p-3 space-y-2.5">
+  <form method="get" id="filter-form" class="flex items-center gap-3 flex-wrap">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search name, company, email..." class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm flex-1 min-w-40 focus:outline-none focus:border-blue-400">
+    <input type="hidden" name="niche" value="law">
+    <select name="stage" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-blue-400">
+      <option value="">All stages</option>
+      {% for s in ['new','day1','day2','day3','day4','day5','replied','call_booked','proposal','closed','lost'] %}
+      <option value="{{ s }}" {{ 'selected' if stage==s }}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    {% for m in missing %}<input type="hidden" name="missing" value="{{ m }}">{% endfor %}
+    {% for h in has_fields %}<input type="hidden" name="has" value="{{ h }}">{% endfor %}
+    <input type="hidden" name="sort" value="{{ sort }}">
+    <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700">Search</button>
+    {% if q or stage or missing or has_fields %}<a href="/leads" class="text-xs text-gray-400 hover:text-gray-700">Clear all</a>{% endif %}
+  </form>
+  <div class="flex items-center gap-2 flex-wrap mt-1">
+    <span class="text-xs text-gray-400 w-14 flex-shrink-0">Quick:</span>
+    <a href="/leads?stage=not_emailed&sort={{ sort }}"
+      class="text-xs px-2.5 py-1 rounded-full border transition-colors {{ 'bg-blue-600 text-white border-blue-600' if stage=='not_emailed' else 'border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600' }}">
+      Not emailed
+    </a>
+    <a href="/leads?stage=emailed&sort={{ sort }}"
+      class="text-xs px-2.5 py-1 rounded-full border transition-colors {{ 'bg-blue-600 text-white border-blue-600' if stage=='emailed' else 'border-gray-200 text-gray-500 hover:border-blue-400 hover:text-blue-600' }}">
+      Emailed
+    </a>
+    <a href="/leads?needs_research=1&sort={{ sort }}"
+      class="text-xs px-2.5 py-1 rounded-full border transition-colors {{ 'bg-amber-500 text-white border-amber-500' if needs_research else 'border-gray-200 text-gray-500 hover:border-amber-400 hover:text-amber-600' }}">
+      Needs research
+    </a>
+    <span class="text-gray-200">|</span>
+    <a href="/leads?stage={{ stage }}&q={{ q }}&sort=newest"
+      class="text-xs px-2.5 py-1 rounded-full border transition-colors {{ 'bg-gray-700 text-white border-gray-700' if sort=='newest' else 'border-gray-200 text-gray-500 hover:border-gray-400' }}">
+      Newest first
+    </a>
+    <a href="/leads?stage={{ stage }}&q={{ q }}&sort=oldest"
+      class="text-xs px-2.5 py-1 rounded-full border transition-colors {{ 'bg-gray-700 text-white border-gray-700' if sort=='oldest' else 'border-gray-200 text-gray-500 hover:border-gray-400' }}">
+      Oldest first
+    </a>
+  </div>
+  <div class="flex items-center gap-2 flex-wrap">
+    <span class="text-xs text-gray-400 w-14 flex-shrink-0">Missing:</span>
+    {% for val, label in [('email','Email'),('linkedin','LinkedIn'),('phone','Phone'),('instagram','Instagram')] %}
+    <button type="button" onclick="toggleFilter('missing','{{ val }}')"
+      class="text-xs px-2.5 py-1 rounded-full border transition-colors {{ 'bg-red-500 text-white border-red-500' if val in missing else 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500' }}">
+      No {{ label }}
+    </button>
+    {% endfor %}
+  </div>
+  <div class="flex items-center gap-2 flex-wrap">
+    <span class="text-xs text-gray-400 w-14 flex-shrink-0">Has:</span>
+    {% for val, label in [('email','Email'),('linkedin','LinkedIn'),('phone','Phone'),('instagram','Instagram')] %}
+    <button type="button" onclick="toggleFilter('has','{{ val }}')"
+      class="text-xs px-2.5 py-1 rounded-full border transition-colors {{ 'bg-green-500 text-white border-green-500' if val in has_fields else 'border-gray-200 text-gray-500 hover:border-green-300 hover:text-green-600' }}">
+      Yes {{ label }}
+    </button>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Import -->
+<div class="bg-white rounded-xl border border-gray-100 mb-4">
+  <div class="border-b border-gray-100 px-4 py-2.5 flex items-center justify-between">
+    <span class="text-xs text-gray-400">Import from Apollo CSV</span>
+    <form method="post" action="/leads/import" enctype="multipart/form-data" class="flex items-center gap-2">
+      <input type="hidden" name="niche" value="law">
+      <input type="file" name="file" accept=".csv" class="text-xs text-gray-500">
+      <button type="submit" class="px-3 py-1 bg-gray-700 text-white rounded text-xs hover:bg-gray-900">Import</button>
+    </form>
+  </div>
+</div>
+
+{% if leads %}
+<div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+  <table class="w-full" id="leads-table">
+    <thead class="border-b border-gray-100 bg-gray-50">
+      <tr class="text-xs text-gray-400 font-medium">
+        <th class="px-3 py-2.5 w-8">
+          <input type="checkbox" id="select-all" class="rounded border-gray-300 cursor-pointer" onchange="toggleAll(this)">
+        </th>
+        <th class="text-left px-4 py-2.5">Name / Company</th>
+        <th class="text-left px-4 py-2.5">Stage</th>
+        <th class="text-left px-4 py-2.5">Score</th>
+        <th class="text-left px-4 py-2.5">Contact</th>
+        <th class="text-left px-4 py-2.5">Added</th>
+        <th class="px-4 py-2.5"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for lead in leads %}
+      <tr class="border-b border-gray-50 hover:bg-gray-50 last:border-0 lead-row"
+          data-id="{{ lead['id'] }}"
+          data-name="{{ lead['name']|e }}"
+          data-company="{{ lead['company'] or '' }}"
+          data-stage="{{ lead['pipeline_stage'] }}"
+          data-score="{{ lead['score'] or 0 }}"
+          data-email="{{ lead['email'] or '' }}"
+          data-linkedin="{{ lead['linkedin_url'] or '' }}"
+          data-phone="{{ lead['phone'] or '' }}"
+          data-url="/leads/{{ lead['id'] }}">
+        <td class="px-3 py-2.5">
+          <input type="checkbox" class="lead-cb rounded border-gray-300 cursor-pointer" value="{{ lead['id'] }}" onchange="onCbChange()">
+        </td>
+        <td class="px-4 py-2.5">
+          <a href="/leads/{{ lead['id'] }}" class="font-medium hover:text-blue-600">{{ lead['name'] }}</a>
+          {% if lead['company'] %}<div class="text-xs text-gray-400">{{ lead['company'] }}</div>{% endif %}
+        </td>
+        <td class="px-4 py-2.5"><span class="text-xs px-2 py-0.5 rounded-full stage-{{ lead['pipeline_stage'] }}">{{ lead['pipeline_stage'] }}</span></td>
+        <td class="px-4 py-2.5">
+          <div class="flex items-center gap-1">
+            <div class="w-16 bg-gray-100 rounded-full h-1"><div class="h-1 rounded-full bg-blue-600" style="width:{{ (lead['score'] or 0) * 10 }}%"></div></div>
+            <span class="mono text-xs text-gray-500">{{ lead['score'] or 0 }}</span>
+          </div>
+        </td>
+        <td class="px-4 py-2.5">
+          <div class="flex gap-1.5 items-center">
+            <span title="Email" class="text-xs font-medium {{ 'text-green-500' if lead['email'] else 'text-gray-200' }}">✉</span>
+            <span title="LinkedIn" class="text-xs font-bold {{ 'text-blue-500' if lead['linkedin_url'] else 'text-gray-200' }}">in</span>
+            <span title="Phone" class="text-xs {{ 'text-gray-600' if lead['phone'] else 'text-gray-200' }}">☎</span>
+            <span title="Instagram" class="text-xs font-medium {{ 'text-pink-500' if lead['instagram_url'] else 'text-gray-200' }}">ig</span>
+          </div>
+        </td>
+        <td class="px-4 py-2.5 text-xs text-gray-400">{{ lead['created_at'][:10] if lead['created_at'] else '' }}</td>
+        <td class="px-4 py-2.5">
+          <a href="/leads/{{ lead['id'] }}" class="text-xs text-blue-600 hover:underline">View →</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if total > per %}
+{% set base = 'q=' ~ q ~ '&stage=' ~ stage %}
+{% set base = base ~ ('&missing=' ~ missing|join('&missing=') if missing else '') %}
+{% set base = base ~ ('&has=' ~ has_fields|join('&has=') if has_fields else '') %}
+<div class="flex items-center justify-between mt-4 text-xs text-gray-500">
+  <span>Showing {{ (page-1)*per+1 }}–{{ [page*per, total]|min }} of {{ total }}</span>
+  <div class="flex gap-2">
+    {% if page > 1 %}<a href="?{{ base }}&page={{ page-1 }}" class="px-3 py-1 border border-gray-200 rounded hover:bg-gray-50">← Prev</a>{% endif %}
+    {% if page*per < total %}<a href="?{{ base }}&page={{ page+1 }}" class="px-3 py-1 border border-gray-200 rounded hover:bg-gray-50">Next →</a>{% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="bg-white rounded-xl border border-gray-100 p-12 text-center">
+  <div class="text-gray-400 mb-2">No leads found</div>
+  {% if missing or has_fields or q or stage %}
+  <a href="/leads" class="text-blue-600 text-sm hover:underline">Clear filters →</a>
+  {% else %}
+  <a href="/leads/add" class="text-blue-600 text-sm hover:underline">Add your first lead →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ── Bulk Action Bar ── -->
+<div id="bulk-bar" class="fixed bottom-0 left-52 right-0 bg-gray-900 text-white px-6 py-3 flex items-center gap-3 translate-y-full transition-transform duration-200 z-50 flex-wrap">
+  <span id="bulk-count" class="text-sm font-medium">0 selected</span>
+  <button id="select-all-pages-btn" onclick="selectAllPages()" class="hidden text-xs px-2 py-1 bg-blue-600 hover:bg-blue-500 rounded transition-colors">
+    Select all {{ total_leads }} leads
+  </button>
+  <span id="all-pages-badge" class="hidden text-xs px-2 py-1 bg-blue-600 rounded">All {{ total_leads }} leads selected</span>
+  <div class="w-px h-5 bg-gray-600"></div>
+  <button onclick="bulkOpenAll()" class="text-xs px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+    Open All ↗
+  </button>
+  <button onclick="startReview()" class="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors">
+    Review →
+  </button>
+  <button onclick="bulkAction('stage','day1')" class="text-xs px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors">
+    → Day 1
+  </button>
+  <div class="w-px h-5 bg-gray-600"></div>
+  <button onclick="exportSelected()" class="text-xs px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 rounded-lg transition-colors flex items-center gap-1.5">
+    ↓ Export CSV
+  </button>
+  <button onclick="sendToGmail()" class="text-xs px-3 py-1.5 bg-green-500 hover:bg-green-400 rounded-lg transition-colors flex items-center gap-1.5">
+    ✉ Send via Gmail →
+  </button>
+  <button onclick="scrapeWebsites()" class="text-xs px-3 py-1.5 bg-violet-600 hover:bg-violet-500 rounded-lg transition-colors flex items-center gap-1.5">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+    Scrape Websites →
+  </button>
+  <button onclick="addToLinkedIn()" class="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors flex items-center gap-1.5">
+    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z M4 6a2 2 0 100-4 2 2 0 000 4z"/></svg>
+    → LinkedIn Pipeline
+  </button>
+  <button onclick="bulkAction('reject')" class="text-xs px-3 py-1.5 bg-red-600 hover:bg-red-500 rounded-lg transition-colors">
+    Reject ✕
+  </button>
+  <button onclick="bulkDelete()" class="text-xs px-3 py-1.5 bg-red-800 hover:bg-red-700 rounded-lg transition-colors">
+    🗑 Delete
+  </button>
+  <button onclick="clearSelection()" class="text-xs text-gray-400 hover:text-white ml-auto">Deselect all</button>
+</div>
+
+<!-- ── Review Modal ── -->
+<div id="review-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-semibold">Review Leads</span>
+        <span id="review-progress" class="text-xs text-gray-400 mono">1 / 1</span>
+      </div>
+      <button onclick="closeReview()" class="text-gray-400 hover:text-gray-700 text-lg leading-none">✕</button>
+    </div>
+    <!-- Progress bar -->
+    <div class="h-1 bg-gray-100"><div id="review-bar" class="h-1 bg-blue-600 transition-all duration-300" style="width:0%"></div></div>
+    <!-- Lead info -->
+    <div class="px-5 py-5">
+      <div class="flex items-start justify-between gap-4 mb-4">
+        <div>
+          <div id="rv-name" class="text-lg font-semibold"></div>
+          <div id="rv-company" class="text-sm text-gray-500 mt-0.5"></div>
+        </div>
+        <span id="rv-stage" class="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium flex-shrink-0"></span>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mb-4">
+        <div class="bg-gray-50 rounded-lg px-3 py-2">
+          <div class="text-xs text-gray-400 mb-0.5">Score</div>
+          <div id="rv-score" class="text-sm font-medium mono"></div>
+        </div>
+        <div class="bg-gray-50 rounded-lg px-3 py-2">
+          <div class="text-xs text-gray-400 mb-0.5">Email</div>
+          <div id="rv-email" class="text-xs font-medium truncate"></div>
+        </div>
+        <div class="bg-gray-50 rounded-lg px-3 py-2">
+          <div class="text-xs text-gray-400 mb-0.5">LinkedIn</div>
+          <div id="rv-linkedin" class="text-xs font-medium truncate"></div>
+        </div>
+        <div class="bg-gray-50 rounded-lg px-3 py-2">
+          <div class="text-xs text-gray-400 mb-0.5">Phone</div>
+          <div id="rv-phone" class="text-xs font-medium"></div>
+        </div>
+      </div>
+      <a id="rv-link" href="#" target="_blank" class="text-xs text-blue-600 hover:underline">Open full profile →</a>
+    </div>
+    <!-- Actions -->
+    <div class="px-5 pb-5 flex gap-3">
+      <button onclick="reviewReject()" class="flex-1 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors">
+        ✕ Reject
+      </button>
+      <button onclick="reviewSkip()" class="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">
+        Skip →
+      </button>
+      <button onclick="reviewKeep()" class="flex-1 py-2.5 bg-green-600 text-white rounded-xl text-sm font-medium hover:bg-green-700 transition-colors">
+        ✓ Keep
+      </button>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ── filter chip toggle ──
+function toggleFilter(type, val) {
+  const url = new URL(window.location.href);
+  const params = url.searchParams;
+  const current = params.getAll(type);
+  const opposite = type === 'missing' ? 'has' : 'missing';
+  const oppCurrent = params.getAll(opposite).filter(v => v !== val);
+  params.delete(opposite);
+  oppCurrent.forEach(v => params.append(opposite, v));
+  if (current.includes(val)) {
+    params.delete(type);
+    current.filter(v => v !== val).forEach(v => params.append(type, v));
+  } else {
+    params.append(type, val);
+  }
+  params.set('page', '1');
+  window.location.href = url.toString();
+}
+
+// ── checkbox selection ──
+let _allPagesSelected = false;
+
+function getChecked() {
+  return [...document.querySelectorAll('.lead-cb:checked')].map(cb => cb.value);
+}
+function toggleAll(el) {
+  document.querySelectorAll('.lead-cb').forEach(cb => cb.checked = el.checked);
+  _allPagesSelected = false;
+  document.getElementById('select-all-pages-btn').classList.add('hidden');
+  document.getElementById('all-pages-badge').classList.add('hidden');
+  onCbChange();
+}
+function onCbChange() {
+  const ids = getChecked();
+  const bar = document.getElementById('bulk-bar');
+  const allCb = document.getElementById('select-all');
+  const pageTotal = document.querySelectorAll('.lead-cb').length;
+  const allPagesBtn = document.getElementById('select-all-pages-btn');
+  const allPagesBadge = document.getElementById('all-pages-badge');
+  const grandTotal = {{ total_leads }};
+
+  if (!_allPagesSelected) {
+    document.getElementById('bulk-count').textContent = ids.length + ' selected';
+    // show "Select all N" option when full page is selected and there are more
+    if (ids.length === pageTotal && pageTotal < grandTotal) {
+      allPagesBtn.classList.remove('hidden');
+      allPagesBadge.classList.add('hidden');
+    } else {
+      allPagesBtn.classList.add('hidden');
+    }
+  }
+  bar.classList.toggle('translate-y-full', ids.length === 0 && !_allPagesSelected);
+  allCb.indeterminate = ids.length > 0 && ids.length < pageTotal && !_allPagesSelected;
+  allCb.checked = ids.length === pageTotal || _allPagesSelected;
+}
+function selectAllPages() {
+  _allPagesSelected = true;
+  document.getElementById('bulk-count').textContent = 'All {{ total_leads }} selected';
+  document.getElementById('select-all-pages-btn').classList.add('hidden');
+  document.getElementById('all-pages-badge').classList.remove('hidden');
+}
+function clearSelection() {
+  document.querySelectorAll('.lead-cb').forEach(cb => cb.checked = false);
+  document.getElementById('select-all').checked = false;
+  _allPagesSelected = false;
+  document.getElementById('select-all-pages-btn').classList.add('hidden');
+  document.getElementById('all-pages-badge').classList.add('hidden');
+  onCbChange();
+}
+
+function exportSelected() {
+  // if all pages selected — just download everything via the export-all route
+  if (_allPagesSelected) {
+    window.location.href = '/export/leads';
+    return;
+  }
+  const ids = getChecked();
+  if (!ids.length) return;
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = '/leads/export-selected';
+  const input = document.createElement('input');
+  input.type = 'hidden'; input.name = 'ids'; input.value = ids.join(',');
+  form.appendChild(input); document.body.appendChild(form);
+  form.submit(); document.body.removeChild(form);
+}
+
+function sendToGmail() {
+  const ids = getChecked();
+  if (!ids.length) return;
+  window.open('http://localhost:5002/compose?velaro_ids=' + ids.join(','), '_blank');
+}
+
+// ── add to LinkedIn pipeline ──
+async function addToLinkedIn() {
+  const ids = getChecked();
+  if (!ids.length) return;
+  const res = await fetch('/api/linkedin/add', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ids})});
+  const data = await res.json();
+  if (data.ok) {
+    const msg = data.added > 0 ? `${data.added} lead${data.added > 1 ? 's' : ''} added to LinkedIn pipeline` : 'Already in pipeline';
+    alert(msg);
+    if (data.added > 0) window.location.href = '/linkedin';
+  }
+}
+
+// ── bulk delete ──
+async function bulkDelete() {
+  const ids = getChecked();
+  if (!ids.length) return;
+  if (!confirm(`Permanently delete ${ids.length} lead${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+  await fetch('/leads/bulk', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({action:'delete', ids})});
+  location.reload();
+}
+
+// ── scrape websites for selected leads ──
+async function scrapeWebsites() {
+  const ids = getChecked();
+  if (!ids.length) return;
+  const resp = await fetch('/api/leads/websites?ids=' + ids.join(','));
+  const data = await resp.json();
+  if (!data.urls.length) {
+    alert('No website URLs found for selected leads.\nMake sure leads were imported from Google Maps CSV.');
+    return;
+  }
+  window.open('/scraper?urls=' + encodeURIComponent(data.urls.join('\n')), '_blank');
+}
+
+// ── bulk actions ──
+function bulkOpenAll() {
+  getChecked().forEach(id => {
+    const row = document.querySelector(`.lead-row[data-id="${id}"]`);
+    if (row) window.open(row.dataset.url, '_blank');
+  });
+}
+async function bulkAction(action, stage) {
+  const ids = getChecked();
+  if (!ids.length) return;
+  const label = action === 'reject' ? 'Reject ' + ids.length + ' leads?' : 'Move ' + ids.length + ' leads to ' + stage + '?';
+  if (!confirm(label)) return;
+  const body = {action, ids};
+  if (stage) body.stage = stage;
+  await fetch('/leads/bulk', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  location.reload();
+}
+
+// ── review mode ──
+let reviewQueue = [];
+let reviewIdx = 0;
+
+function startReview() {
+  reviewQueue = getChecked().map(id => {
+    const row = document.querySelector(`.lead-row[data-id="${id}"]`);
+    return {
+      id, url: row.dataset.url,
+      name: row.dataset.name, company: row.dataset.company,
+      stage: row.dataset.stage, score: row.dataset.score,
+      email: row.dataset.email, linkedin: row.dataset.linkedin,
+      phone: row.dataset.phone
+    };
+  });
+  if (!reviewQueue.length) return;
+  reviewIdx = 0;
+  document.getElementById('review-modal').classList.remove('hidden');
+  document.getElementById('review-modal').classList.add('flex');
+  renderReview();
+}
+function renderReview() {
+  const lead = reviewQueue[reviewIdx];
+  const total = reviewQueue.length;
+  document.getElementById('review-progress').textContent = (reviewIdx+1) + ' / ' + total;
+  document.getElementById('review-bar').style.width = ((reviewIdx+1)/total*100) + '%';
+  document.getElementById('rv-name').textContent = lead.name;
+  document.getElementById('rv-company').textContent = lead.company || '—';
+  document.getElementById('rv-stage').textContent = lead.stage;
+  document.getElementById('rv-score').textContent = lead.score + ' / 10';
+  document.getElementById('rv-email').textContent = lead.email || '—';
+  document.getElementById('rv-linkedin').textContent = lead.linkedin ? 'Linked ✓' : '—';
+  document.getElementById('rv-phone').textContent = lead.phone || '—';
+  document.getElementById('rv-link').href = lead.url;
+}
+function reviewNext() {
+  reviewIdx++;
+  if (reviewIdx >= reviewQueue.length) { closeReview(); location.reload(); return; }
+  renderReview();
+}
+function reviewKeep() { reviewNext(); }
+function reviewSkip() { reviewNext(); }
+async function reviewReject() {
+  const lead = reviewQueue[reviewIdx];
+  await fetch('/leads/bulk', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({action:'reject', ids:[lead.id]})});
+  reviewNext();
+}
+function closeReview() {
+  document.getElementById('review-modal').classList.add('hidden');
+  document.getElementById('review-modal').classList.remove('flex');
+}
+// close modal on backdrop click
+document.getElementById('review-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeReview();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Velaro CRM</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>* { font-family: 'Inter', sans-serif; } .mono { font-family: 'JetBrains Mono', monospace; }</style>
+</head>
+<body class="bg-gray-50 text-gray-900 text-sm">
+<div class="max-w-7xl mx-auto p-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <div class="flex items-center gap-2 mb-0.5">
+        <a href="/" class="mono text-sm font-medium text-gray-400 hover:text-gray-700">VELARO</a>
+        <span class="text-gray-300">/</span>
+        <span class="mono text-sm font-medium">CRM</span>
+      </div>
+      <p class="text-xs text-gray-500">Pipeline · Email Activity · Sequences</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="/leads" class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">Leads</a>
+      <a href="http://localhost:5002/compose" target="_blank" class="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700">Send Emails →</a>
+    </div>
+  </div>
+
+  <!-- Top stats -->
+  <div class="grid grid-cols-4 gap-4 mb-6">
+    <div class="bg-white rounded-xl border border-gray-100 p-4">
+      <div class="text-2xl font-semibold mono text-blue-600">{{ emails_sent_total }}</div>
+      <div class="text-xs text-gray-400 mt-1">Total emails sent</div>
+      <div class="text-xs text-blue-400 mt-0.5">{{ emails_today }} today</div>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 p-4">
+      <div class="text-2xl font-semibold mono text-purple-600">{{ active_sequences }}</div>
+      <div class="text-xs text-gray-400 mt-1">Active sequences</div>
+      <div class="text-xs text-purple-400 mt-0.5"><a href="http://localhost:5002/sequences" target="_blank" class="hover:underline">View in sender →</a></div>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 p-4">
+      <div class="text-2xl font-semibold mono text-green-600">{{ replied_sequences }}</div>
+      <div class="text-xs text-gray-400 mt-1">Replied</div>
+      <div class="text-xs text-green-400 mt-0.5">From email sequences</div>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 p-4">
+      <div class="text-2xl font-semibold mono text-amber-600">{{ stage_counts.get('call_booked', 0) }}</div>
+      <div class="text-xs text-gray-400 mt-1">Calls booked</div>
+      <div class="text-xs text-amber-400 mt-0.5">{{ stage_counts.get('proposal', 0) }} proposals out</div>
+    </div>
+  </div>
+
+  <!-- Pipeline funnel -->
+  <div class="bg-white rounded-xl border border-gray-100 p-4 mb-6">
+    <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Pipeline</div>
+    <div class="flex items-end gap-1.5 overflow-x-auto pb-1">
+      {% set stage_labels = {
+        'new': 'New', 'day1': 'Day 1', 'day2': 'Day 2', 'day3': 'Day 3',
+        'day4': 'Day 4', 'day5': 'Day 5', 'emailed': 'Emailed',
+        'replied': 'Replied', 'call_booked': 'Call', 'proposal': 'Proposal',
+        'closed': 'Closed', 'lost': 'Lost'
+      } %}
+      {% set stage_colors = {
+        'new': 'bg-gray-200', 'day1': 'bg-blue-100', 'day2': 'bg-blue-200',
+        'day3': 'bg-blue-300', 'day4': 'bg-blue-400', 'day5': 'bg-blue-500',
+        'emailed': 'bg-purple-400', 'replied': 'bg-green-400',
+        'call_booked': 'bg-amber-400', 'proposal': 'bg-orange-400',
+        'closed': 'bg-green-600', 'lost': 'bg-red-300'
+      } %}
+      {% set max_count = stage_counts.values()|max or 1 %}
+      {% for s in stages %}
+      {% set cnt = stage_counts.get(s, 0) %}
+      <a href="/leads?stage={{ s }}" class="flex flex-col items-center gap-1 group min-w-0 flex-1">
+        <span class="text-xs text-gray-500 mono group-hover:text-gray-800">{{ cnt }}</span>
+        <div class="{{ stage_colors[s] }} rounded-t-lg w-full transition-all group-hover:opacity-80"
+             style="height: {{ [4, (cnt / max_count * 80)|int]|max }}px; min-height:4px"></div>
+        <span class="text-xs text-gray-400 truncate w-full text-center group-hover:text-gray-700">{{ stage_labels[s] }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-3 gap-5">
+
+    <!-- Lead table with email status -->
+    <div class="col-span-2">
+      <div class="flex items-center justify-between mb-3">
+        <div class="text-xs font-semibold text-gray-600">All Leads + Email Activity</div>
+        <div class="flex gap-2">
+          <input id="search" type="text" placeholder="Search..." onkeyup="filterTable()"
+            class="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-400 w-36">
+        </div>
+      </div>
+      <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs" id="lead-table">
+            <thead class="bg-gray-50 border-b border-gray-100">
+              <tr>
+                <th class="text-left px-4 py-2.5 text-gray-500 font-medium">Lead</th>
+                <th class="text-left px-4 py-2.5 text-gray-500 font-medium">Stage</th>
+                <th class="text-center px-3 py-2.5 text-gray-500 font-medium">Emails</th>
+                <th class="text-left px-4 py-2.5 text-gray-500 font-medium">Last sent</th>
+                <th class="text-center px-3 py-2.5 text-gray-500 font-medium">Sequence</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-50">
+              {% for l in leads %}
+              <tr class="hover:bg-gray-50 cursor-pointer" onclick="window.location='/leads/{{ l.id }}'">
+                <td class="px-4 py-2.5">
+                  <div class="font-medium text-gray-800 truncate max-w-36">{{ l.name }}</div>
+                  <div class="text-gray-400 truncate max-w-36">{{ l.company or '' }}</div>
+                </td>
+                <td class="px-4 py-2.5">
+                  <span class="px-2 py-0.5 rounded-full text-xs mono
+                    {% if l.pipeline_stage == 'replied' %}bg-green-50 text-green-700
+                    {% elif l.pipeline_stage == 'emailed' %}bg-purple-50 text-purple-700
+                    {% elif l.pipeline_stage == 'call_booked' %}bg-amber-50 text-amber-700
+                    {% elif l.pipeline_stage == 'closed' %}bg-green-100 text-green-800
+                    {% elif l.pipeline_stage == 'lost' %}bg-red-50 text-red-500
+                    {% elif l.pipeline_stage == 'new' %}bg-gray-100 text-gray-500
+                    {% else %}bg-blue-50 text-blue-700{% endif %}">
+                    {{ l.pipeline_stage }}
+                  </span>
+                </td>
+                <td class="px-3 py-2.5 text-center">
+                  {% if l.emails_sent and l.emails_sent > 0 %}
+                  <span class="mono font-medium text-purple-600">{{ l.emails_sent }}</span>
+                  {% else %}
+                  <span class="text-gray-300">—</span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-2.5 text-gray-400 mono">
+                  {% if l.last_emailed %}
+                  {{ l.last_emailed[:10] }}
+                  {% else %}—{% endif %}
+                </td>
+                <td class="px-3 py-2.5 text-center">
+                  {% if l.seq_replied %}
+                  <span class="text-green-500 font-bold">replied</span>
+                  {% elif l.seq_done %}
+                  <span class="text-gray-400">done</span>
+                  {% elif l.seq_paused %}
+                  <span class="text-amber-500">paused</span>
+                  {% elif l.seq_next %}
+                  <span class="text-blue-500">step {{ l.seq_next - 1 }}/4</span>
+                  {% else %}
+                  <span class="text-gray-200">—</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column -->
+    <div class="space-y-4">
+
+      <!-- Recent sends -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <div class="text-xs font-semibold text-gray-600 mb-3">Recent Emails Sent</div>
+        {% if recent_sends %}
+        <div class="space-y-2">
+          {% for s in recent_sends %}
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex-1 min-w-0">
+              <div class="text-xs font-medium truncate">{{ s.name or s.to_email }}</div>
+              <div class="text-xs text-gray-400 truncate">{{ s.to_email }}</div>
+            </div>
+            <div class="text-xs text-gray-400 mono flex-shrink-0">{{ (s.sent_at or '')[:10] }}</div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-xs text-gray-400 py-4 text-center">No emails sent yet</div>
+        {% endif %}
+        <a href="http://localhost:5002/status" target="_blank" class="block text-xs text-blue-500 hover:underline mt-3">View all sends →</a>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <div class="text-xs font-semibold text-gray-600 mb-3">Quick Actions</div>
+        <div class="space-y-2">
+          <a href="http://localhost:5002/compose" target="_blank"
+            class="flex items-center justify-between px-3 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-700 text-xs">
+            <span>Compose & Send</span><span>→</span>
+          </a>
+          <a href="http://localhost:5002/sequences" target="_blank"
+            class="flex items-center justify-between px-3 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 text-xs">
+            <span>Manage Sequences</span><span>→</span>
+          </a>
+          <a href="http://localhost:5002/scheduled" target="_blank"
+            class="flex items-center justify-between px-3 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 text-xs">
+            <span>Scheduled Sends</span><span>→</span>
+          </a>
+          <a href="/leads?stage=replied"
+            class="flex items-center justify-between px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 text-xs">
+            <span>View Replied Leads</span><span>{{ stage_counts.get('replied',0) }}</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Stage breakdown -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <div class="text-xs font-semibold text-gray-600 mb-3">Stage Breakdown</div>
+        <div class="space-y-1.5">
+          {% for s in ['emailed','replied','call_booked','proposal','closed'] %}
+          {% set cnt = stage_counts.get(s, 0) %}
+          {% if cnt > 0 %}
+          <a href="/leads?stage={{ s }}" class="flex items-center justify-between hover:bg-gray-50 px-2 py-1 rounded-lg">
+            <span class="text-xs text-gray-500">{{ stage_labels[s] }}</span>
+            <span class="mono text-xs font-medium text-gray-700">{{ cnt }}</span>
+          </a>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function filterTable() {
+  const q = document.getElementById('search').value.toLowerCase();
+  document.querySelectorAll('#lead-table tbody tr').forEach(row => {
+    row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

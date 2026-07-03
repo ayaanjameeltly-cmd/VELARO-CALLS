@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <h1 class="text-lg font-medium">Content Calendar</h1>
+  <div class="flex gap-2">
+    <select id="week-select" onchange="filterWeek(this.value)" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5">
+      {% for w in weeks %}<option value="{{ w }}" {{ 'selected' if w == current_week }}>Week {{ w }}</option>{% endfor %}
+    </select>
+    <button onclick="document.getElementById('add-modal').style.display='flex'" class="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700">+ Add post</button>
+  </div>
+</div>
+
+<div class="grid grid-cols-7 gap-2 mb-4">
+  {% for day in ['MON','TUE','WED','THU','FRI','SAT','SUN'] %}
+  <div class="text-center text-xs text-gray-400 font-mono py-1">{{ day }}</div>
+  {% endfor %}
+</div>
+
+{% set platforms = {'linkedin': 'bg-blue-50 text-blue-700 border-blue-200', 'instagram': 'bg-pink-50 text-pink-700 border-pink-200', 'reddit': 'bg-orange-50 text-orange-700 border-orange-200', 'facebook': 'bg-indigo-50 text-indigo-700 border-indigo-200'} %}
+
+<div class="grid grid-cols-7 gap-2 mb-8">
+  {% for day_num in range(1, 8) %}
+  <div class="min-h-32 bg-white rounded-lg border border-gray-100 p-2">
+    {% for post in posts if post.day_of_week == day_num %}
+    <div class="mb-2 p-2 rounded border text-xs leading-tight {{ platforms.get(post.platform, 'bg-gray-50 text-gray-700 border-gray-200') }} {{ 'opacity-50 line-through' if post.posted }}">
+      <div class="flex items-center justify-between mb-1">
+        <span class="font-mono text-xs">{{ post.platform }}</span>
+        {% if not post.posted %}
+        <button onclick="markPosted({{ post.id }})" class="text-green-600 hover:text-green-800 text-xs">✓</button>
+        {% else %}
+        <span class="text-gray-400">✓</span>
+        {% endif %}
+      </div>
+      <div class="truncate">{{ post.content[:50] }}...</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="bg-white rounded-xl border border-gray-100 p-4 mb-4">
+  <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">90-day content plan — PI law focus</div>
+  <div class="grid grid-cols-3 gap-4">
+    {% set plan = [
+      ('Week 1–2', 'Foundation', [
+        'MON: "What happens when a PI firm misses a call at 9pm" (text post)',
+        'WED: Build screenshot — n8n intake workflow',
+        'FRI: "Most PI firms lose 40-60% of after-hours leads" (stat + story)',
+        'Carousel: "5 cases PI firms lose every week without knowing it"',
+        'Reddit: Answer 3 posts about intake/missing leads in r/Lawyertalk',
+      ]),
+      ('Week 3–4', 'Authority building', [
+        'MON: "I tested something — sent inquiry to 20 PI firms at 9pm" (data post)',
+        'WED: VAPI voice bot demo screenshot/recording',
+        'FRI: Personal — "why I focus only on PI firms"',
+        'Carousel: "Before vs after: manual intake vs AI intake"',
+        'IG Reel: Screen recording of AI responding to a test inquiry',
+      ]),
+      ('Week 5–8', 'Social proof', [
+        'MON: First client story (anonymous, specific numbers)',
+        'WED: "What we built this week" — client system screenshots',
+        'FRI: "Intake conversion tripled in 30 days — here\'s what changed"',
+        'Carousel: "How AI intake works — step by step for PI firms"',
+        'IG: Before/after response time metric screenshot',
+      ]),
+    ] %}
+    {% for period, theme, items in plan %}
+    <div>
+      <div class="text-xs font-medium text-gray-700 mb-1">{{ period }} — {{ theme }}</div>
+      {% for item in items %}
+      <div class="text-xs text-gray-500 py-1 border-b border-gray-50 last:border-0">• {{ item }}</div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="bg-white rounded-xl border border-gray-100 p-4">
+  <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Carousel ideas — copy any of these</div>
+  <div class="grid grid-cols-2 gap-3">
+    {% for title, slides in [
+      ('5 cases PI firms lose every week', ['Slide 1: "5 cases. Every week. Gone."', 'Slide 2: The 9pm call nobody answered', 'Slide 3: The web form that sat for 14 hours', 'Slide 4: The competitor who replied in 4 minutes', 'Slide 5: "One missed $50k case pays for everything"', 'Slide 6: Book a free audit → calendly.com/velaro']),
+      ('How AI intake works for PI firms', ['Slide 1: "Your phone rings at 11pm about an accident"', 'Slide 2: OLD WAY: voicemail, nobody hears it until morning', 'Slide 3: NEW WAY: AI answers, captures details, qualifies', 'Slide 4: Lead booked on attorney calendar automatically', 'Slide 5: You wake up to a qualified consultation booked', 'Slide 6: Zero staff. Zero missed cases.']),
+    ] %}
+    <div class="border border-gray-100 rounded-lg p-3">
+      <div class="text-xs font-medium text-gray-700 mb-2">{{ title }}</div>
+      {% for slide in slides %}
+      <div class="text-xs text-gray-500 py-0.5">{{ slide }}</div>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div id="add-modal" style="display:none" class="fixed inset-0 bg-black bg-opacity-40 items-center justify-center z-50">
+  <div class="bg-white rounded-xl p-6 w-full max-w-md mx-4">
+    <h3 class="text-sm font-medium mb-4">Add post to calendar</h3>
+    <form method="post" action="/content" class="space-y-3">
+      <select name="platform" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+        <option>linkedin</option><option>instagram</option><option>reddit</option><option>facebook</option>
+      </select>
+      <select name="post_type" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+        {% for t in ['observation','client_story','build','educational','personal','hot_take','carousel'] %}
+        <option>{{ t }}</option>{% endfor %}
+      </select>
+      <input type="date" name="scheduled_date" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none">
+      <textarea name="content" rows="5" placeholder="Post content..." class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none resize-none"></textarea>
+      <div class="flex gap-2">
+        <button type="submit" class="flex-1 bg-gray-900 text-white rounded-lg py-2 text-sm">Add</button>
+        <button type="button" onclick="document.getElementById('add-modal').style.display='none'" class="px-4 py-2 border border-gray-200 rounded-lg text-sm">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function markPosted(id) {
+  fetch('/content/' + id + '/posted', {method:'POST'}).then(() => location.reload());
+}
+</script>
+{% endblock %}

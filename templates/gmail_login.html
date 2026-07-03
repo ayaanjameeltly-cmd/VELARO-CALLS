@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Velaro Gmail Sender — Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>* { font-family: 'Inter', sans-serif; } .mono { font-family: 'JetBrains Mono', monospace; }</style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
+<div class="w-full max-w-md">
+
+  <div class="text-center mb-8">
+    <div class="inline-flex items-center gap-2 mb-3">
+      <span class="mono text-sm font-medium tracking-tight text-gray-900">VELARO</span>
+      <span class="mono text-xs text-gray-400">Gmail Sender</span>
+    </div>
+    <h1 class="text-2xl font-semibold text-gray-900">Connect Gmail</h1>
+    <p class="text-sm text-gray-500 mt-1">Use an App Password — not your Gmail password</p>
+  </div>
+
+  {% if error %}
+  <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">
+    <strong>Login failed:</strong> {{ error }}
+  </div>
+  {% endif %}
+
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+    <form method="post" class="space-y-4">
+      <div>
+        <label class="text-xs font-medium text-gray-500 block mb-1.5">Gmail address</label>
+        <input type="email" name="gmail" required placeholder="you@gmail.com"
+          class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-500 block mb-1.5">App Password</label>
+        <input type="password" name="password" required placeholder="xxxx xxxx xxxx xxxx"
+          class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        <p class="text-xs text-gray-400 mt-1.5">
+          Get it at <strong>myaccount.google.com → Security → App passwords</strong>
+        </p>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-500 block mb-1.5">From name</label>
+        <input type="text" name="from_name" value="AJ from Velaro" placeholder="AJ from Velaro"
+          class="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+      </div>
+      <button type="submit"
+        class="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gray-700 transition-colors mt-2">
+        Connect & Continue →
+      </button>
+    </form>
+  </div>
+
+  <div class="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
+    <div class="text-xs font-semibold text-amber-800 mb-2">How to get an App Password</div>
+    <ol class="text-xs text-amber-700 space-y-1 list-decimal list-inside">
+      <li>Go to <strong>myaccount.google.com</strong></li>
+      <li>Security → 2-Step Verification (enable if not on)</li>
+      <li>Search "App passwords" at the top</li>
+      <li>Create one for "Mail" → copy the 16-char code</li>
+      <li>Paste it above (spaces OK)</li>
+    </ol>
+  </div>
+
+</div>
+</body>
+</html>

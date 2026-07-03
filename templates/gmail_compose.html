@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Velaro Gmail Sender — Compose</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>* { font-family: 'Inter', sans-serif; } .mono { font-family: 'JetBrains Mono', monospace; }</style>
+</head>
+<body class="bg-gray-50 text-gray-900 text-sm">
+<div class="max-w-6xl mx-auto p-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center gap-3">
+      <a href="/" class="text-xs text-gray-400 hover:text-gray-700">Accounts</a>
+      <span class="text-gray-300">·</span>
+      <span class="text-xs font-medium text-gray-900">Compose</span>
+      <span class="text-gray-300">·</span>
+      <a href="/sequences" class="text-xs text-gray-400 hover:text-gray-700">Sequences</a>
+      <span class="text-gray-300">·</span>
+      <a href="/sent" class="text-xs text-gray-400 hover:text-gray-700">Sent</a>
+      <span class="text-gray-300">·</span>
+      <a href="/status" class="text-xs text-gray-400 hover:text-gray-700">Status</a>
+    </div>
+    <div id="account-summary" class="text-xs text-gray-400"></div>
+  </div>
+
+  <div class="grid grid-cols-3 gap-5">
+
+    <!-- LEFT: Compose -->
+    <div class="col-span-2 space-y-4">
+
+      <!-- Account selector -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Send from accounts</div>
+        <div class="flex flex-wrap gap-2" id="account-chips">
+          {% for acc in accounts %}
+          <label class="flex items-center gap-2 px-3 py-2 rounded-xl border cursor-pointer transition-colors border-gray-200 hover:border-blue-300 account-chip">
+            <input type="checkbox" class="acc-cb rounded" value="{{ acc.email }}" checked onchange="updateAccountSummary()">
+            <div>
+              <div class="text-xs font-medium">{{ acc.email }}</div>
+              <div class="text-xs text-gray-400">{{ acc.from_name }}</div>
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+        <div id="capacity-info" class="text-xs text-gray-400 mt-2"></div>
+      </div>
+
+      <!-- Template picker -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Templates</div>
+        <div class="flex gap-2 flex-wrap">
+          {% for key, t in templates.items() %}
+          <button onclick="loadTemplate('{{ key }}')"
+            class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-colors">
+            {{ t.name }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Subject -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <label class="text-xs font-medium text-gray-500 block mb-2">Subject line</label>
+        <input type="text" id="subject" placeholder="{{firm_name}} — after-hours intake losing cases?"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400"
+          onfocus="setActiveField(this)">
+        <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+          <span class="text-xs text-gray-400 mr-1">Insert:</span>
+          {% raw %}<button type="button" onmousedown="event.preventDefault()" onclick="insertVar('{{first_name}}')" class="var-chip text-xs px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 font-mono transition-colors">{{first_name}}</button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="insertVar('{{firm_name}}')" class="var-chip text-xs px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 font-mono transition-colors">{{firm_name}}</button>
+          <button type="button" onmousedown="event.preventDefault()" onclick="insertVar('{{company}}')" class="var-chip text-xs px-2.5 py-1 bg-green-50 text-green-700 border border-green-200 rounded-lg hover:bg-green-100 font-mono transition-colors">{{company}}</button>{% endraw %}
+        </div>
+      </div>
+
+      <!-- Body -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs font-medium text-gray-500">Email body (plain text)</label>
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs text-gray-400">Insert:</span>
+            {% raw %}<button type="button" onmousedown="event.preventDefault()" onclick="insertVar('{{first_name}}')" class="var-chip text-xs px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 font-mono transition-colors">{{first_name}}</button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="insertVar('{{firm_name}}')" class="var-chip text-xs px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100 font-mono transition-colors">{{firm_name}}</button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="insertVar('{{city}}')" class="var-chip text-xs px-2.5 py-1 bg-orange-50 text-orange-700 border border-orange-200 rounded-lg hover:bg-orange-100 font-mono transition-colors">{{city}}</button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="insertVar('{{google_line}}')" class="var-chip text-xs px-2.5 py-1 bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-lg hover:bg-yellow-100 font-mono transition-colors">{{google_line}}</button>
+            <button type="button" onmousedown="event.preventDefault()" onclick="insertVar('{{google_rating}}')" class="var-chip text-xs px-2.5 py-1 bg-gray-50 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-100 font-mono transition-colors">{{google_rating}}</button>{% endraw %}
+          </div>
+        </div>
+        <textarea id="body" rows="15" placeholder="Hi {{first_name}},&#10;&#10;..."
+          class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-xs mono leading-relaxed focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
+          onfocus="setActiveField(this)"></textarea>
+      </div>
+
+      <!-- Recipients -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-xs font-medium text-gray-500">Recipients</label>
+          <div class="flex gap-2">
+            <button onclick="loadVelaroLeads()" class="text-xs px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg hover:bg-purple-100">
+              Import from Velaro ({{ velaro_count }} leads)
+            </button>
+            <button onclick="document.getElementById('recipients').value=''; updateCount();" class="text-xs px-2 py-1 text-gray-400 hover:text-gray-700">Clear</button>
+          </div>
+        </div>
+        <textarea id="recipients" rows="8"
+          placeholder="Paste CSV or one per line:&#10;email,first_name,company&#10;john@smithlaw.com,John,Smith & Associates&#10;&#10;Or just emails:&#10;jane@texaspi.com"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-xs mono leading-relaxed focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"></textarea>
+        <div id="recipient-count" class="text-xs text-gray-400 mt-1.5">0 recipients</div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Settings + Send -->
+    <div class="col-span-1 space-y-4">
+
+      <!-- Delay settings -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Delay between sends</div>
+        <div class="grid grid-cols-2 gap-2 mb-3">
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Min (sec)</label>
+            <input type="number" id="delay_min" value="90" min="15"
+              class="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm mono focus:outline-none focus:ring-1 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Max (sec)</label>
+            <input type="number" id="delay_max" value="120" min="25"
+              class="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm mono focus:outline-none focus:ring-1 focus:ring-blue-400">
+          </div>
+        </div>
+        <div class="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+          Actual delay is randomized between min and max each send — looks human to Gmail.
+        </div>
+      </div>
+
+      <!-- Anti-spam tips -->
+      <div class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div class="text-xs font-semibold text-amber-800 mb-2">Anti-spam checklist</div>
+        <ul class="text-xs text-amber-700 space-y-1.5">
+          <li>✓ Limits auto-enforced per account age</li>
+          <li>✓ Random delay per send (not uniform)</li>
+          <li>✓ Multiple accounts = load balanced</li>
+          <li>✓ Plain text only</li>
+          <li>✓ Personalise subject with firm name</li>
+          <li>✗ Don't use brand new accounts for cold email</li>
+          <li>✗ Don't remove the P.S. unsubscribe line</li>
+        </ul>
+      </div>
+
+      <!-- Auto-send countdown -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Auto-send</div>
+          <span class="text-xs text-gray-400">9:30 PM IST · Mon–Fri</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="flex-1">
+            <div class="text-xs text-gray-400 mb-1">Next run in</div>
+            <div id="auto-countdown" class="mono text-2xl font-semibold text-gray-900 tracking-tight">--:--:--</div>
+          </div>
+          <div id="auto-pulse" class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+            <div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+          </div>
+        </div>
+        <div id="auto-note" class="text-xs text-gray-400 mt-2">Imports new leads + fires due follow-ups automatically</div>
+      </div>
+
+      <!-- Sequence toggle -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4">
+        <label class="flex items-start gap-3 cursor-pointer">
+          <input type="checkbox" id="seq-toggle" class="mt-0.5 rounded border-gray-300 text-blue-600">
+          <div>
+            <div class="text-xs font-medium text-gray-700">Track as 4-email sequence</div>
+            <div class="text-xs text-gray-400 mt-0.5">Sends Email 1 now. Auto-queues Email 2 (+5d), Email 3 (+10d), Email 4 (+18d) if no reply. View & run from <a href="/sequences" class="text-blue-600 hover:underline">Sequences</a>.</div>
+          </div>
+        </label>
+      </div>
+
+      <!-- Send / Schedule -->
+      <div class="bg-white rounded-xl border border-gray-100 p-4 space-y-3">
+        <!-- Mode toggle -->
+        <div class="flex rounded-xl border border-gray-200 overflow-hidden text-xs">
+          <button id="mode-now" onclick="setMode('now')"
+            class="flex-1 py-2 font-medium bg-gray-900 text-white transition-colors">Send Now</button>
+          <button id="mode-sched" onclick="setMode('schedule')"
+            class="flex-1 py-2 font-medium text-gray-500 hover:bg-gray-50 transition-colors">Schedule</button>
+        </div>
+
+        <!-- Schedule time picker (hidden by default) -->
+        <div id="schedule-picker" class="hidden space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-gray-400 block mb-1">Date</label>
+              <input type="date" id="sched-date"
+                class="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm mono focus:outline-none focus:ring-1 focus:ring-blue-400">
+            </div>
+            <div>
+              <label class="text-xs text-gray-400 block mb-1">Time (IST)</label>
+              <input type="time" id="sched-time" value="22:30"
+                oninput="updateUSTime()"
+                class="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-sm mono focus:outline-none focus:ring-1 focus:ring-blue-400">
+            </div>
+          </div>
+          <div id="us-time-note" class="text-xs text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg mono"></div>
+        </div>
+
+        <button id="send-btn" onclick="startSend()"
+          class="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gray-700 transition-colors">
+          Start Sending →
+        </button>
+        <button id="sched-btn" onclick="scheduleSend()" style="display:none"
+          class="w-full bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-blue-700 transition-colors">
+          Schedule Send 🕐
+        </button>
+        <button id="stop-btn" onclick="stopSend()" style="display:none"
+          class="w-full bg-red-600 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-red-700 transition-colors">
+          Stop
+        </button>
+        <div id="schedule-confirm" class="hidden text-xs bg-green-50 border border-green-200 text-green-800 rounded-xl px-3 py-2.5"></div>
+        <a href="/scheduled" class="block text-center text-xs text-gray-400 hover:text-gray-700 pt-1">View scheduled sends →</a>
+      </div>
+
+      <!-- Progress -->
+      <div id="progress-box" class="bg-white rounded-xl border border-gray-100 p-4 hidden">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Progress</div>
+        <div class="w-full bg-gray-100 rounded-full h-2 mb-3">
+          <div id="prog-bar" class="h-2 rounded-full bg-blue-600 transition-all duration-500" style="width:0%"></div>
+        </div>
+        <div class="grid grid-cols-3 gap-2 mb-3 text-center">
+          <div>
+            <div id="prog-sent" class="text-xl font-semibold text-green-600 mono">0</div>
+            <div class="text-xs text-gray-400">Sent</div>
+          </div>
+          <div>
+            <div id="prog-failed" class="text-xl font-semibold text-red-500 mono">0</div>
+            <div class="text-xs text-gray-400">Failed</div>
+          </div>
+          <div>
+            <div id="prog-total" class="text-xl font-semibold text-gray-600 mono">0</div>
+            <div class="text-xs text-gray-400">Total</div>
+          </div>
+        </div>
+        <div id="prog-status" class="text-xs text-gray-500 mono mb-1">Starting...</div>
+        <div id="prog-current" class="text-xs text-blue-600 mono truncate mb-1"></div>
+        <div id="prog-next" class="text-xs text-gray-400 hidden">Next in <span id="next-count">0</span>s</div>
+      </div>
+
+      <!-- Log -->
+      <div id="log-box" class="bg-white rounded-xl border border-gray-100 p-4 hidden">
+        <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Log</div>
+        <div id="log-entries" class="space-y-0.5 max-h-72 overflow-y-auto"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const TEMPLATES = {{ templates | tojson }};
+let currentJobId = null;
+let pollInterval = null;
+let activeField = null;
+let sendMode = 'now';
+
+function setMode(mode) {
+  sendMode = mode;
+  document.getElementById('mode-now').className   = 'flex-1 py-2 font-medium transition-colors ' + (mode==='now' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50');
+  document.getElementById('mode-sched').className = 'flex-1 py-2 font-medium transition-colors ' + (mode==='schedule' ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50');
+  document.getElementById('schedule-picker').classList.toggle('hidden', mode !== 'schedule');
+  document.getElementById('send-btn').style.display  = mode === 'now' ? '' : 'none';
+  document.getElementById('sched-btn').style.display = mode === 'schedule' ? '' : 'none';
+  if (mode === 'schedule') updateUSTime();
+}
+
+function updateUSTime() {
+  const t = document.getElementById('sched-time').value;
+  if (!t) return;
+  const [h, m] = t.split(':').map(Number);
+  const istMins = h * 60 + m;
+  const estMins = istMins - 630; // IST-5:30 = -330, EST-5 = -300 → IST to EST = -570... let me recalc
+  // IST = UTC+5:30, EST = UTC-5, CST = UTC-6
+  const utcMins = istMins - 330;
+  const estH = ((Math.floor((utcMins - 300) / 60) % 24 + 24) % 24);
+  const estM = ((utcMins - 300) % 60 + 60) % 60;
+  const cstH = ((Math.floor((utcMins - 360) / 60) % 24 + 24) % 24);
+  const cstM = ((utcMins - 360) % 60 + 60) % 60;
+  const fmt = (h, m) => `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  document.getElementById('us-time-note').textContent =
+    `${t} IST = ${fmt(cstH, cstM)} CST (Texas) · ${fmt(estH, estM)} EST (Florida)`;
+}
+
+function getSchedDatetime() {
+  const d = document.getElementById('sched-date').value;
+  const t = document.getElementById('sched-time').value || '22:30';
+  return d + ' ' + t + ':00';
+}
+
+async function scheduleSend() {
+  const subject    = document.getElementById('subject').value.trim();
+  const body       = document.getElementById('body').value.trim();
+  const recipients = document.getElementById('recipients').value.trim();
+  const delay_min  = parseInt(document.getElementById('delay_min').value);
+  const delay_max  = parseInt(document.getElementById('delay_max').value);
+  const accounts   = [...document.querySelectorAll('.acc-cb:checked')].map(c => c.value);
+  const sched_at   = getSchedDatetime();
+
+  if (!subject)    { alert('Enter a subject line.'); return; }
+  if (!body)       { alert('Write the email body.'); return; }
+  if (!recipients) { alert('Add recipients.'); return; }
+  if (!accounts.length) { alert('Select at least one account.'); return; }
+  if (!document.getElementById('sched-date').value) { alert('Pick a send date.'); return; }
+
+  const btn = document.getElementById('sched-btn');
+  btn.textContent = 'Scheduling…';
+  btn.disabled = true;
+
+  try {
+    const add_to_seq = document.getElementById('seq-toggle').checked;
+    const res  = await fetch('/api/schedule', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({subject, body, recipients, delay_min, delay_max, accounts, add_to_seq, scheduled_at: sched_at})
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      alert('Error: ' + data.error);
+      btn.textContent = 'Schedule Send 🕐';
+      btn.disabled = false;
+      return;
+    }
+
+    // Show inline confirmation
+    btn.textContent = '✓ Scheduled!';
+    btn.className = btn.className.replace('bg-blue-600 hover:bg-blue-700', 'bg-green-600');
+
+    const note = document.getElementById('schedule-confirm');
+    note.classList.remove('hidden');
+    note.innerHTML = `✓ <strong>${data.recipients} emails</strong> scheduled for <strong>${sched_at}</strong> &nbsp;·&nbsp; <a href="/scheduled" class="underline">View scheduled →</a>`;
+
+    setTimeout(() => {
+      btn.textContent = 'Schedule Send 🕐';
+      btn.disabled = false;
+      btn.className = btn.className.replace('bg-green-600', 'bg-blue-600 hover:bg-blue-700');
+    }, 5000);
+
+  } catch(e) {
+    alert('Request failed: ' + e.message);
+    btn.textContent = 'Schedule Send 🕐';
+    btn.disabled = false;
+  }
+}
+
+function setActiveField(el) { activeField = el; }
+
+function insertVar(variable) {
+  // Default to body if nothing focused yet
+  const el = activeField || document.getElementById('body');
+  if (!el) return;
+  el.focus();
+  const start = el.selectionStart;
+  const end   = el.selectionEnd;
+  const val   = el.value;
+  el.value = val.slice(0, start) + variable + val.slice(end);
+  const newPos = start + variable.length;
+  el.setSelectionRange(newPos, newPos);
+  if (el.id === 'recipients') updateCount();
+}
+
+function loadTemplate(key) {
+  const t = TEMPLATES[key];
+  if (!t) return;
+  document.getElementById('subject').value = t.subject || '';
+  document.getElementById('body').value    = t.body    || '';
+}
+
+async function loadVelaroLeads() {
+  const res  = await fetch('/api/velaro-leads');
+  const data = await res.json();
+  if (!data.count) { alert('No leads with emails in Velaro DB.'); return; }
+  document.getElementById('recipients').value = data.csv;
+  updateCount();
+}
+
+function updateCount() {
+  const lines = document.getElementById('recipients').value.trim().split('\n')
+    .filter(l => l.includes('@') && !l.startsWith('email'));
+  document.getElementById('recipient-count').textContent = lines.length + ' recipients';
+}
+document.getElementById('recipients').addEventListener('input', updateCount);
+
+async function updateAccountSummary() {
+  const selected = [...document.querySelectorAll('.acc-cb:checked')].map(c => c.value);
+  const res  = await fetch('/api/account-stats');
+  const data = await res.json();
+  const filtered = data.filter(a => selected.includes(a.email));
+  const total_remaining = filtered.reduce((s,a) => s + a.remaining, 0);
+  document.getElementById('account-summary').textContent =
+    `${selected.length} account${selected.length !== 1 ? 's' : ''} selected · ${total_remaining} emails available today`;
+
+  // update chip styles
+  document.querySelectorAll('.account-chip').forEach(chip => {
+    const cb = chip.querySelector('.acc-cb');
+    chip.classList.toggle('border-blue-400', cb.checked);
+    chip.classList.toggle('bg-blue-50', cb.checked);
+    chip.classList.toggle('border-gray-200', !cb.checked);
+  });
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  // Set default schedule date to today
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('sched-date').value = today;
+  updateUSTime();
+  updateAccountSummary();
+  // Auto-import if opened from Velaro with selected IDs
+  const params = new URLSearchParams(window.location.search);
+  const ids = params.get('velaro_ids');
+  if (ids) {
+    const res  = await fetch('/api/velaro-by-ids?ids=' + ids);
+    const data = await res.json();
+    if (data.count > 0) {
+      document.getElementById('recipients').value = data.csv;
+      updateCount();
+      // show a subtle banner
+      const banner = document.createElement('div');
+      banner.className = 'fixed top-4 right-4 bg-green-600 text-white text-xs px-4 py-2 rounded-xl shadow z-50';
+      banner.textContent = `✓ ${data.count} leads imported from Velaro`;
+      document.body.appendChild(banner);
+      setTimeout(() => banner.remove(), 3000);
+    }
+  }
+});
+
+async function startSend() {
+  const subject    = document.getElementById('subject').value.trim();
+  const body       = document.getElementById('body').value.trim();
+  const recipients = document.getElementById('recipients').value.trim();
+  const delay_min  = parseInt(document.getElementById('delay_min').value);
+  const delay_max  = parseInt(document.getElementById('delay_max').value);
+  const accounts   = [...document.querySelectorAll('.acc-cb:checked')].map(c => c.value);
+
+  if (!subject)    { alert('Enter a subject line.'); return; }
+  if (!body)       { alert('Write the email body.'); return; }
+  if (!recipients) { alert('Add recipients.'); return; }
+  if (!accounts.length) { alert('Select at least one account.'); return; }
+
+  const recipCount = document.getElementById('recipients').value.trim().split('\n')
+    .filter(l => l.includes('@') && !l.startsWith('email')).length;
+
+  if (!confirm(`Send to ${recipCount} recipients using ${accounts.length} account(s)?\nDelay: ${delay_min}–${delay_max}s between sends.\nEstimated time: ${Math.round(recipCount * (delay_min + delay_max) / 2 / 60)} min`)) return;
+
+  const add_to_seq = document.getElementById('seq-toggle').checked;
+  const res = await fetch('/api/start', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({subject, body, recipients, delay_min, delay_max, accounts, add_to_seq})
+  });
+  const data = await res.json();
+  if (data.error) { alert('Error: ' + data.error); return; }
+
+  currentJobId = data.job_id;
+  document.getElementById('send-btn').style.display = 'none';
+  document.getElementById('stop-btn').style.display = '';
+  document.getElementById('progress-box').classList.remove('hidden');
+  document.getElementById('log-box').classList.remove('hidden');
+  pollInterval = setInterval(pollProgress, 1500);
+}
+
+async function stopSend() {
+  if (currentJobId) await fetch('/api/stop/' + currentJobId, {method:'POST'});
+}
+
+async function pollProgress() {
+  if (!currentJobId) return;
+  const d = await (await fetch('/api/progress/' + currentJobId)).json();
+
+  const pct = d.total > 0 ? Math.round((d.sent + d.failed) / d.total * 100) : 0;
+  document.getElementById('prog-bar').style.width = pct + '%';
+  document.getElementById('prog-sent').textContent   = d.sent;
+  document.getElementById('prog-failed').textContent = d.failed;
+  document.getElementById('prog-total').textContent  = d.total;
+  document.getElementById('prog-status').textContent = statusLabel(d.status);
+  document.getElementById('prog-current').textContent = d.current ? '→ ' + d.current : '';
+
+  const nextEl = document.getElementById('prog-next');
+  if (d.next_in > 0) { nextEl.classList.remove('hidden'); document.getElementById('next-count').textContent = d.next_in; }
+  else { nextEl.classList.add('hidden'); }
+
+  const logEl = document.getElementById('log-entries');
+  logEl.innerHTML = '';
+  (d.log || []).slice().reverse().forEach(entry => {
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-2 text-xs py-0.5';
+    const icon  = {sent:'✓', failed:'✗', skip:'—', info:'ℹ'}[entry.status] || '·';
+    const color = {sent:'text-green-600', failed:'text-red-500', skip:'text-gray-400', info:'text-blue-500'}[entry.status] || 'text-gray-400';
+    div.innerHTML = `<span class="${color} font-bold w-4 flex-shrink-0">${icon}</span>
+      <span class="mono text-gray-600 truncate flex-1">${entry.email || entry.msg || ''}</span>
+      ${entry.via ? `<span class="text-gray-300 text-xs flex-shrink-0 hidden sm:block">${entry.via.split('@')[0]}</span>` : ''}`;
+    logEl.appendChild(div);
+  });
+
+  if (['done','stopped','error','limit_reached'].includes(d.status)) {
+    clearInterval(pollInterval);
+    document.getElementById('stop-btn').style.display = 'none';
+    document.getElementById('send-btn').style.display = '';
+    if (d.status === 'done') {
+      document.getElementById('prog-bar').classList.replace('bg-blue-600','bg-green-500');
+    }
+    updateAccountSummary();
+  }
+}
+
+function statusLabel(s) {
+  return {running:'Sending…', done:'Done ✓', stopped:'Stopped', error:'Error',
+          limit_reached:'Daily limit reached', starting:'Starting…'}[s] || s;
+}
+
+// ── Auto-send countdown (9:30 PM IST = 16:00 UTC, weekdays only) ──
+function nextAutoSendUTC() {
+  const now = new Date();
+  const target = new Date();
+  target.setUTCHours(16, 0, 0, 0); // 9:30 PM IST
+  if (target <= now) target.setUTCDate(target.getUTCDate() + 1);
+  // Skip Saturday (6) and Sunday (0) — advance to Monday
+  while (target.getDay() === 0 || target.getDay() === 6) {
+    target.setUTCDate(target.getUTCDate() + 1);
+  }
+  return target;
+}
+
+function tickCountdown() {
+  const diff = nextAutoSendUTC() - Date.now();
+  const el   = document.getElementById('auto-countdown');
+  const note = document.getElementById('auto-note');
+  const pulse = document.getElementById('auto-pulse');
+  if (!el) return;
+
+  if (diff <= 0) {
+    el.textContent = '00:00:00';
+    el.classList.add('text-green-600');
+    note.textContent = 'Sending now…';
+    pulse.innerHTML = '<div class="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></div>';
+    return;
+  }
+
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
+  el.textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+  // Colour shifts as it gets close
+  if (diff < 5 * 60 * 1000) {         // < 5 min
+    el.className = 'mono text-2xl font-semibold text-green-600 tracking-tight';
+    pulse.innerHTML = '<div class="w-2.5 h-2.5 rounded-full bg-green-500 animate-ping"></div>';
+  } else if (diff < 60 * 60 * 1000) { // < 1 hr
+    el.className = 'mono text-2xl font-semibold text-amber-600 tracking-tight';
+    pulse.innerHTML = '<div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>';
+    pulse.className = pulse.className.replace('bg-green-100','bg-amber-100');
+  } else {
+    el.className = 'mono text-2xl font-semibold text-gray-900 tracking-tight';
+  }
+}
+tickCountdown();
+setInterval(tickCountdown, 1000);
+</script>
+
+<!-- Active Job Banner -->
+<div id="job-banner" class="hidden fixed top-0 left-0 right-0 z-50 shadow-lg">
+  <div class="bg-blue-600 text-white px-4 py-2 flex items-center justify-between text-xs">
+    <div class="flex items-center gap-3">
+      <span class="inline-flex gap-1 items-center">
+        <span class="w-2 h-2 rounded-full bg-white animate-ping inline-block"></span>
+        <span class="font-semibold">Sending in progress</span>
+      </span>
+      <span id="jb-counts" class="text-blue-100"></span>
+      <span id="jb-current" class="text-blue-200 truncate max-w-xs hidden sm:block"></span>
+    </div>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <div class="w-32 bg-blue-800 rounded-full h-1.5">
+        <div id="jb-bar" class="h-1.5 rounded-full bg-white transition-all duration-500" style="width:0%"></div>
+      </div>
+      <button id="jb-stop" class="bg-white text-blue-700 font-semibold px-2.5 py-0.5 rounded-lg hover:bg-blue-50">Stop</button>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  let activeJobId = null;
+  const banner = document.getElementById('job-banner');
+  document.getElementById('jb-stop').addEventListener('click', async () => {
+    if (activeJobId) { await fetch('/api/stop/' + activeJobId, {method:'POST'}); stopSend(); }
+  });
+  async function checkJob() {
+    try {
+      const d = await (await fetch('/api/active-job')).json();
+      if (d.active) {
+        activeJobId = d.job_id;
+        banner.classList.remove('hidden');
+        document.body.style.paddingTop = '36px';
+        const pct = d.total > 0 ? Math.round((d.sent + d.failed) / d.total * 100) : 0;
+        document.getElementById('jb-bar').style.width = pct + '%';
+        document.getElementById('jb-counts').textContent = d.sent + '/' + d.total + ' sent' + (d.failed ? ' · ' + d.failed + ' failed' : '') + (d.next_in > 0 ? ' · next in ' + d.next_in + 's' : '');
+        const cur = document.getElementById('jb-current');
+        cur.textContent = d.current ? '→ ' + d.current : '';
+        cur.classList.toggle('hidden', !d.current);
+      } else {
+        banner.classList.add('hidden');
+        document.body.style.paddingTop = '';
+        activeJobId = null;
+      }
+    } catch(e) {}
+  }
+  checkJob();
+  setInterval(checkJob, 2000);
+})();
+</script>
+</body>
+</html>

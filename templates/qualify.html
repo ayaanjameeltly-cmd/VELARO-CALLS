@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-lg font-medium">Lead Qualifier</h1>
+    <p class="text-xs text-gray-400 mt-0.5">Score leads before adding to outreach pipeline</p>
+  </div>
+  <a href="/qualify/bulk" class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50">Bulk qualify ({{ unscored }}) →</a>
+</div>
+
+<div class="grid grid-cols-2 gap-4">
+
+  <!-- Qualifier form -->
+  <div class="space-y-4">
+    <div class="bg-white rounded-xl border border-gray-100 p-5">
+      <div class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-4">Score a new lead</div>
+
+      <div class="space-y-2 mb-4">
+        <label class="text-xs text-gray-400 block">Lead details (optional — for saving)</label>
+        <input id="ql-name" type="text" placeholder="Full name" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+        <input id="ql-company" type="text" placeholder="Company / Business name" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+        <input id="ql-email" type="email" placeholder="Email (optional)" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+        <input id="ql-linkedin" type="text" placeholder="LinkedIn URL (optional)" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+        <input id="ql-instagram" type="text" placeholder="Instagram handle (optional)" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400">
+      </div>
+
+      <!-- Scoring criteria — PI Law -->
+      <div id="criteria-law" class="space-y-2">
+        <p class="text-xs font-medium text-gray-500 mb-2">Check all that apply</p>
+        {% set law_criteria = [
+          ('lw1','Has named partners listed on website',2,True),
+          ('lw2','US-based firm',1,True),
+          ('lw3','10+ Google reviews',2,False),
+          ('lw4','Has website with case results / testimonials',1,False),
+          ('lw5','Active LinkedIn (200+ connections)',2,False),
+          ('lw6','Running Meta or Google ads',2,False),
+          ('lw7','2–20 attorneys (right size)',1,False),
+          ('lw8','Posted on LinkedIn in last 30 days',1,False),
+          ('lw9','PI focus clear (car accidents, slip & fall)',1,False),
+        ] %}
+        {% for id, label, pts, req in law_criteria %}
+        <label class="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors" onclick="calcScore()">
+          <input type="checkbox" id="{{ id }}" data-pts="{{ pts }}" class="qual-check-law rounded">
+          <span class="flex-1 text-sm text-gray-700">{{ label }}</span>
+          <div class="flex items-center gap-1.5">
+            {% if req %}<span class="text-xs text-red-500 font-mono">req</span>{% endif %}
+            <span class="mono text-xs text-gray-400 w-6 text-right">+{{ pts }}</span>
+          </div>
+        </label>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Score result + save -->
+  <div class="space-y-4">
+    <div class="bg-white rounded-xl border border-gray-100 p-5 sticky top-4">
+      <div class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-4">Score</div>
+
+      <div class="text-center py-4 mb-4" id="score-display">
+        <div class="text-6xl font-medium mono mb-2" id="score-num" style="color:var(--score-color,#9ca3af)">0</div>
+        <div class="text-sm text-gray-400">out of 13</div>
+        <div class="mt-3 text-sm font-medium" id="score-label">—</div>
+      </div>
+
+      <div class="w-full bg-gray-100 rounded-full h-2 mb-4">
+        <div id="score-bar" class="h-2 rounded-full transition-all duration-300 bg-gray-300" style="width:0%"></div>
+      </div>
+
+      <div id="score-action" class="text-xs text-gray-500 text-center mb-4 leading-relaxed">
+        Score the lead using the checklist
+      </div>
+
+      <!-- Missing required items warning -->
+      <div id="missing-warning" class="hidden bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700 mb-4"></div>
+
+      <div class="space-y-2">
+        <button onclick="saveLead()" class="w-full bg-gray-900 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-gray-700 transition-colors">
+          Save Lead to Pipeline
+        </button>
+        <button onclick="resetForm()" class="w-full border border-gray-200 text-gray-500 rounded-lg py-2 text-sm hover:bg-gray-50 transition-colors">
+          Reset
+        </button>
+      </div>
+
+      <div id="save-status" class="mt-3 text-center text-xs hidden"></div>
+    </div>
+
+    <!-- Recent qualifications -->
+    {% if recent_scored %}
+    <div class="bg-white rounded-xl border border-gray-100 p-4">
+      <div class="text-xs font-medium uppercase tracking-wide text-gray-400 mb-3">Recently Scored</div>
+      {% for lead in recent_scored %}
+      <a href="/leads/{{ lead.id }}" class="flex items-center justify-between py-2 border-b border-gray-50 last:border-0 hover:bg-gray-50 -mx-1 px-1 rounded">
+        <div>
+          <div class="text-sm font-medium">{{ lead.name }}</div>
+          <div class="text-xs text-gray-400">{{ lead.company or '—' }}</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-12 bg-gray-100 rounded-full h-1.5">
+            <div class="h-1.5 rounded-full {{ 'bg-green-500' if lead.score >= 8 else 'bg-yellow-400' if lead.score >= 5 else 'bg-red-400' }}" style="width:{{ (lead.score or 0) * 7.7 }}%"></div>
+          </div>
+          <span class="mono text-xs {{ 'text-green-600' if lead.score >= 8 else 'text-yellow-600' if lead.score >= 5 else 'text-red-500' }}">{{ lead.score }}/13</span>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+function calcScore() {
+  const checks = document.querySelectorAll('.qual-check-law');
+  let score = 0, missing = [];
+  checks.forEach(c => {
+    if (c.checked) score += parseInt(c.dataset.pts);
+    else {
+      const label = c.closest('label');
+      if (label && label.querySelector('.text-red-500')) missing.push(label.querySelector('.flex-1').textContent.trim());
+    }
+  });
+  const maxScore = 13;
+  const pct = Math.round((score / maxScore) * 100);
+  document.getElementById('score-num').textContent = score;
+  const bar = document.getElementById('score-bar');
+  bar.style.width = pct + '%';
+  let color, label, action;
+  if (score >= 8) {
+    color = '#059669'; label = '🟢 High Priority'; action = 'Contact immediately — enter Day 1 pipeline today';
+    bar.className = 'h-2 rounded-full transition-all duration-300 bg-green-500';
+  } else if (score >= 5) {
+    color = '#d97706'; label = '🟡 Medium Priority'; action = 'Warm up first — like/comment for 2 days before connecting';
+    bar.className = 'h-2 rounded-full transition-all duration-300 bg-yellow-400';
+  } else {
+    color = '#dc2626'; label = '🔴 Low Priority'; action = 'Skip — not worth the outreach time at this score';
+    bar.className = 'h-2 rounded-full transition-all duration-300 bg-red-400';
+  }
+  document.getElementById('score-num').style.color = color;
+  document.getElementById('score-label').textContent = label;
+  document.getElementById('score-label').style.color = color;
+  document.getElementById('score-action').textContent = action;
+  const warn = document.getElementById('missing-warning');
+  if (missing.length > 0) {
+    warn.classList.remove('hidden');
+    warn.textContent = '⚠ Missing required: ' + missing.join(', ');
+  } else { warn.classList.add('hidden'); }
+  return score;
+}
+
+function saveLead() {
+  const name = document.getElementById('ql-name').value.trim();
+  if (!name) { alert('Enter a name first'); return; }
+  const score = calcScore();
+  const stage = score >= 8 ? 'new' : score >= 5 ? 'new' : 'new';
+  const data = new URLSearchParams({
+    name, score,
+    company: document.getElementById('ql-company').value,
+    email: document.getElementById('ql-email').value,
+    linkedin_url: document.getElementById('ql-linkedin').value,
+    instagram_url: document.getElementById('ql-instagram').value,
+    niche: 'law', source: 'manual', pipeline_stage: stage,
+    notes: 'Qualified via Lead Qualifier. Score: ' + score + '/13'
+  });
+  fetch('/leads/add_ajax', { method: 'POST', body: data,
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+  }).then(r => r.json()).then(d => {
+    const s = document.getElementById('save-status');
+    s.classList.remove('hidden');
+    s.innerHTML = d.ok ? '<span class="text-green-600">✓ Saved — <a href="/leads/' + d.id + '" class="underline">view lead →</a></span>'
+                       : '<span class="text-red-500">Error saving</span>';
+  });
+}
+
+function resetForm() {
+  document.querySelectorAll('.qual-check-law').forEach(c => c.checked = false);
+  ['ql-name','ql-company','ql-email','ql-linkedin','ql-instagram'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('score-num').textContent = '0';
+  document.getElementById('score-num').style.color = '#9ca3af';
+  document.getElementById('score-label').textContent = '—';
+  document.getElementById('score-label').style.color = '';
+  document.getElementById('score-bar').style.width = '0%';
+  document.getElementById('score-action').textContent = 'Score the lead using the checklist';
+  document.getElementById('missing-warning').classList.add('hidden');
+  document.getElementById('save-status').classList.add('hidden');
+}
+
+calcScore();
+</script>
+{% endblock %}

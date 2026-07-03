@@ -1,0 +1,486 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="space-y-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between">
+    <div>
+      <h1 class="text-xl font-semibold">Cold Emails</h1>
+      <p class="text-gray-500 text-xs mt-0.5">Targeting firms hiring intake staff — 8 templates, auto-sends daily</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+        <span class="text-xs text-gray-500">Auto Mon–Fri</span>
+        <button id="toggle-btn" onclick="toggleAuto()"
+          class="relative w-9 h-5 rounded-full transition-colors {{ 'bg-green-500' if sched_enabled else 'bg-gray-200' }}">
+          <span id="toggle-dot" class="absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform {{ 'translate-x-4' if sched_enabled else 'translate-x-0.5' }}"></span>
+        </button>
+        <input type="time" id="sched-time" value="{{ sched_time }}"
+          class="text-xs border-0 outline-none text-gray-600 w-16" onchange="saveSchedule()">
+      </div>
+      <button onclick="document.getElementById('manual-log-modal').classList.remove('hidden')"
+        class="border border-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm hover:bg-gray-50 transition-colors">
+        + Log Email
+      </button>
+      <button onclick="sendBatch()" id="send-btn"
+        class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors flex items-center gap-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/>
+        </svg>
+        Send Now (3–5)
+      </button>
+    </div>
+  </div>
+
+  <!-- Sender info bar -->
+  <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+    <span>From: <span class="font-medium text-gray-900">{{ gmail_sender }}</span></span>
+    <span class="text-gray-300">|</span>
+    <span>Send time: <span class="font-medium text-gray-900">{{ sched_time }} IST{% if us_eastern_note %} ≈ {{ us_eastern_note }}{% endif %}</span></span>
+    <span class="text-gray-300">|</span>
+    <span>3–5 emails, 90–180s apart, Mon–Fri only</span>
+  </div>
+
+  {% if sched_enabled %}
+  <div class="bg-green-50 border border-green-200 rounded-lg px-4 py-2.5 flex items-center gap-2 text-sm text-green-800">
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    Auto-send ON — {{ sched_time }} IST{% if us_eastern_note %} (≈ {{ us_eastern_note }}){% endif %}, Mon–Fri.
+    {% if sched_last_run %} Last run: {{ sched_last_run }}.{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- Stats row -->
+  <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+    <div class="bg-white rounded-xl border border-gray-100 p-4 text-center">
+      <div class="text-2xl font-semibold text-blue-600">{{ pending_q }}</div>
+      <div class="text-xs text-gray-500 mt-0.5">Pending</div>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 p-4 text-center">
+      <div class="text-2xl font-semibold text-gray-700">{{ total_sent }}</div>
+      <div class="text-xs text-gray-500 mt-0.5">Sent Total</div>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 p-4 text-center">
+      <div class="text-2xl font-semibold text-indigo-600">{{ sent_today }}</div>
+      <div class="text-xs text-gray-500 mt-0.5">Sent Today</div>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 p-4 text-center">
+      <div class="text-2xl font-semibold text-green-600">{{ replied_pos }}</div>
+      <div class="text-xs text-gray-500 mt-0.5">Interested</div>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 p-4 text-center">
+      <div class="text-2xl font-semibold text-red-500">{{ replied_neg }}</div>
+      <div class="text-xs text-gray-500 mt-0.5">No Thanks</div>
+    </div>
+    <div class="bg-white rounded-xl border border-gray-100 p-4 text-center">
+      <div class="text-2xl font-semibold text-gray-400">{{ failed }}</div>
+      <div class="text-xs text-gray-500 mt-0.5">Failed</div>
+    </div>
+  </div>
+
+  <!-- Upload + Templates -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="bg-white rounded-xl border border-gray-100 p-5">
+      <h2 class="font-medium text-sm mb-1">Upload Recipients CSV</h2>
+      <p class="text-xs text-gray-500 mb-3">Columns: <span class="font-mono bg-gray-100 px-1 rounded">email, first_name, firm_name, city</span> — blocklisted emails auto-skipped</p>
+      <div id="drop-zone" class="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center cursor-pointer hover:border-gray-400 transition-colors"
+           onclick="document.getElementById('csv-file').click()"
+           ondragover="event.preventDefault(); this.classList.add('border-blue-400')"
+           ondragleave="this.classList.remove('border-blue-400')"
+           ondrop="handleDrop(event)">
+        <svg class="w-8 h-8 text-gray-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+        </svg>
+        <p class="text-sm text-gray-500">Drop CSV here or <span class="text-blue-600 underline">browse</span></p>
+        <p class="text-xs text-gray-400 mt-1" id="file-name">No file selected</p>
+      </div>
+      <input type="file" id="csv-file" accept=".csv" class="hidden" onchange="uploadCSV(this)">
+      <div id="upload-result" class="mt-3 text-sm hidden"></div>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-100 p-5">
+      <h2 class="font-medium text-sm mb-1">8 Templates — Hiring & Overnight Intake</h2>
+      <div class="space-y-1.5">
+        {% set colors = ['blue', 'violet', 'emerald', 'amber', 'rose', 'sky', 'purple', 'indigo'] %}
+        {% for name in template_names %}
+        <div class="flex items-center gap-2.5 p-2 rounded-lg bg-gray-50">
+          <span class="w-5 h-5 rounded-full bg-{{ colors[loop.index0] }}-100 text-{{ colors[loop.index0] }}-700 text-xs flex items-center justify-center font-medium flex-shrink-0">{{ loop.index }}</span>
+          <span class="text-xs text-gray-700">{{ name }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Sent Log -->
+  <div class="bg-white rounded-xl border border-gray-100">
+    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+      <h2 class="font-medium text-sm">Sent Log <span class="text-gray-400 font-normal">({{ total_sent }} total)</span></h2>
+      <div class="flex items-center gap-2 text-xs text-gray-500">
+        <span class="w-2 h-2 rounded-full bg-green-400 inline-block"></span> Interested
+        <span class="w-2 h-2 rounded-full bg-red-400 inline-block ml-2"></span> No Thanks
+        <span class="w-2 h-2 rounded-full bg-yellow-400 inline-block ml-2"></span> Not Now
+        <span class="w-2 h-2 rounded-full bg-gray-300 inline-block ml-2"></span> No Reply
+      </div>
+    </div>
+    {% if sent_log %}
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="text-gray-400 border-b border-gray-50">
+            <th class="text-left px-4 py-2 font-medium">Name / Firm</th>
+            <th class="text-left px-4 py-2 font-medium">Email</th>
+            <th class="text-left px-4 py-2 font-medium">Subject</th>
+            <th class="text-left px-4 py-2 font-medium">Date</th>
+            <th class="text-left px-4 py-2 font-medium">Reply</th>
+            <th class="px-4 py-2"></th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-50" id="sent-log-body">
+          {% for r in sent_log %}
+          <tr class="hover:bg-gray-50" id="srow-{{ r.id }}">
+            <td class="px-4 py-2.5">
+              <div class="font-medium text-gray-800">{{ r.first_name }}</div>
+              <div class="text-gray-400">{{ (r.firm_name or '')[:24] }}</div>
+            </td>
+            <td class="px-4 py-2.5 text-gray-500">{{ r.email }}</td>
+            <td class="px-4 py-2.5 text-gray-600 max-w-[160px] truncate" title="{{ r.subject }}">{{ r.subject }}</td>
+            <td class="px-4 py-2.5 text-gray-400 whitespace-nowrap">{{ (r.sent_at or '')[:10] }}</td>
+            <td class="px-4 py-2.5">
+              {% set rt = (r.reply_type or '') %}
+              {% if rt == 'POSITIVE' %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span> Interested
+                </span>
+              {% elif rt == 'NEGATIVE' %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span> No Thanks
+                </span>
+              {% elif rt == 'NOT_NOW' %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 font-medium">
+                  <span class="w-1.5 h-1.5 rounded-full bg-yellow-500"></span> Not Now
+                </span>
+              {% elif r.status == 'failed' %}
+                <span class="px-2 py-0.5 rounded-full bg-red-50 text-red-600">Failed</span>
+              {% else %}
+                <span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">No reply</span>
+              {% endif %}
+            </td>
+            <td class="px-4 py-2.5">
+              {% if (r.reply_type or '') == '' and r.status != 'failed' %}
+              <select onchange="markReplied('{{ r.email }}', this.value, {{ r.id }})"
+                class="text-xs border border-gray-200 rounded px-1.5 py-0.5 text-gray-500 bg-white cursor-pointer hover:border-gray-400">
+                <option value="">Mark reply…</option>
+                <option value="POSITIVE">Interested</option>
+                <option value="NEGATIVE">No Thanks</option>
+                <option value="NOT_NOW">Not Now</option>
+              </select>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="px-5 py-10 text-center text-gray-400 text-sm">No emails sent yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- Queue + Blocklist side by side -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+    <!-- Queue -->
+    <div class="bg-white rounded-xl border border-gray-100">
+      <div class="px-5 py-3 border-b border-gray-100">
+        <h2 class="font-medium text-sm">Queue <span class="text-gray-400 font-normal">({{ pending_q }} pending)</span></h2>
+      </div>
+      {% if queue %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-gray-400 border-b border-gray-50">
+              <th class="text-left px-4 py-2 font-medium">Name</th>
+              <th class="text-left px-4 py-2 font-medium">Firm</th>
+              <th class="text-left px-4 py-2 font-medium">Status</th>
+              <th class="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for r in queue %}
+            <tr class="hover:bg-gray-50 group" id="qrow-{{ r.id }}">
+              <td class="px-4 py-2.5">{{ r.first_name }}</td>
+              <td class="px-4 py-2.5 text-gray-600">{{ (r.firm_name or '')[:26] }}</td>
+              <td class="px-4 py-2.5">
+                {% if r.status == 'pending' %}
+                  <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">pending</span>
+                {% elif r.status == 'sent' %}
+                  <span class="px-1.5 py-0.5 rounded bg-green-50 text-green-700">sent</span>
+                {% else %}
+                  <span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-600">{{ r.status }}</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-2.5">
+                <button onclick="deleteQueue({{ r.id }})"
+                  class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-all">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="px-5 py-8 text-center text-gray-400 text-sm">Queue is empty.<br>Upload a CSV to get started.</div>
+      {% endif %}
+    </div>
+
+    <!-- Blocklist -->
+    <div class="bg-white rounded-xl border border-gray-100">
+      <div class="px-5 py-3 border-b border-gray-100">
+        <h2 class="font-medium text-sm">Blocklist <span class="text-gray-400 font-normal">({{ blocklist|length }} — never emailed)</span></h2>
+      </div>
+      {% if blocklist %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-gray-400 border-b border-gray-50">
+              <th class="text-left px-4 py-2 font-medium">Name / Firm</th>
+              <th class="text-left px-4 py-2 font-medium">Email</th>
+              <th class="text-left px-4 py-2 font-medium">Reason</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-50">
+            {% for r in blocklist %}
+            <tr class="hover:bg-gray-50">
+              <td class="px-4 py-2.5">
+                <div class="font-medium text-gray-700">{{ r.first_name }}</div>
+                <div class="text-gray-400">{{ r.firm_name }}</div>
+              </td>
+              <td class="px-4 py-2.5 text-gray-500">{{ r.email }}</td>
+              <td class="px-4 py-2.5">
+                {% if r.reason == 'replied_negative' %}
+                  <span class="px-1.5 py-0.5 rounded bg-red-50 text-red-600">Said No</span>
+                {% else %}
+                  <span class="px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">{{ r.reason }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="px-5 py-8 text-center text-gray-400 text-sm">No one blocklisted yet.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Last batch result -->
+  <div id="batch-result" class="hidden bg-white rounded-xl border border-gray-100 p-5">
+    <h2 class="font-medium text-sm mb-3">Last Batch Result</h2>
+    <div id="batch-result-body" class="space-y-2 text-sm"></div>
+  </div>
+
+</div>
+
+<!-- Manual Log Modal -->
+<div id="manual-log-modal" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold text-base">Log Manually Sent Email</h2>
+      <button onclick="document.getElementById('manual-log-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-600">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+    <div class="space-y-3">
+      <div>
+        <label class="text-xs font-medium text-gray-600 block mb-1">Email *</label>
+        <input id="ml-email" type="email" placeholder="james@amarolawfirm.com"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-medium text-gray-600 block mb-1">First Name</label>
+          <input id="ml-name" type="text" placeholder="James"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+        <div>
+          <label class="text-xs font-medium text-gray-600 block mb-1">Firm Name</label>
+          <input id="ml-firm" type="text" placeholder="Amaro Law Firm"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-600 block mb-1">Subject sent</label>
+        <input id="ml-subject" type="text" placeholder="Amaro Law Firm — saw the AI integrator role"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-600 block mb-1">Reply received?</label>
+        <select id="ml-reply" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-gray-400">
+          <option value="">No reply yet</option>
+          <option value="POSITIVE">Interested / Positive</option>
+          <option value="NEGATIVE">No Thanks / Negative</option>
+          <option value="NOT_NOW">Not Now / Later</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-5">
+      <button onclick="submitManualLog()"
+        class="flex-1 bg-gray-900 text-white rounded-lg py-2 text-sm font-medium hover:bg-gray-700 transition-colors">
+        Save
+      </button>
+      <button onclick="document.getElementById('manual-log-modal').classList.add('hidden')"
+        class="flex-1 border border-gray-200 text-gray-600 rounded-lg py-2 text-sm hover:bg-gray-50 transition-colors">
+        Cancel
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+let autoEnabled = {{ 'true' if sched_enabled else 'false' }};
+
+function toggleAuto() {
+  autoEnabled = !autoEnabled;
+  const btn = document.getElementById('toggle-btn');
+  const dot = document.getElementById('toggle-dot');
+  btn.className = `relative w-9 h-5 rounded-full transition-colors ${autoEnabled ? 'bg-green-500' : 'bg-gray-200'}`;
+  dot.className = `absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoEnabled ? 'translate-x-4' : 'translate-x-0.5'}`;
+  saveSchedule();
+}
+
+async function saveSchedule() {
+  const send_time = document.getElementById('sched-time').value;
+  const res = await fetch('/api/cold-emails/schedule', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ enabled: autoEnabled, send_time })
+  });
+  const data = await res.json();
+  if (data.ok) showToast(autoEnabled ? `Auto ON — daily at ${send_time} IST` : 'Auto-send OFF', autoEnabled ? 'green' : 'gray');
+}
+
+async function uploadCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('file-name').textContent = file.name;
+  const form = new FormData();
+  form.append('file', file);
+  const res  = await fetch('/api/cold-emails/upload', { method: 'POST', body: form });
+  const data = await res.json();
+  const el   = document.getElementById('upload-result');
+  el.classList.remove('hidden');
+  if (data.ok) {
+    el.className = 'mt-3 text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2';
+    el.textContent = `Added ${data.added} recipients. Skipped ${data.skipped} (duplicates or blocklisted).`;
+    setTimeout(() => location.reload(), 1500);
+  } else {
+    el.className = 'mt-3 text-sm text-red-700 bg-red-50 rounded-lg px-3 py-2';
+    el.textContent = `Error: ${data.error}`;
+  }
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('border-blue-400');
+  const file = e.dataTransfer.files[0];
+  if (!file) return;
+  const input = document.getElementById('csv-file');
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  uploadCSV(input);
+}
+
+async function sendBatch() {
+  const btn = document.getElementById('send-btn');
+  btn.disabled = true;
+  btn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg> Sending…`;
+  try {
+    const res  = await fetch('/api/cold-emails/send', { method: 'POST' });
+    const data = await res.json();
+    const el   = document.getElementById('batch-result');
+    const body = document.getElementById('batch-result-body');
+    el.classList.remove('hidden');
+    if (data.ok) {
+      body.innerHTML = `<div class="text-green-700 font-medium mb-2">Sent ${data.sent}/${data.total} emails</div>`;
+      (data.results || []).forEach(r => {
+        const color = r.status === 'sent' ? 'green' : 'red';
+        body.innerHTML += `<div class="flex items-start gap-2 py-1.5 border-b border-gray-50 last:border-0">
+          <span class="px-1.5 py-0.5 rounded bg-${color}-50 text-${color}-700 text-xs flex-shrink-0">${r.status}</span>
+          <div><div class="text-gray-800">${r.email}</div><div class="text-gray-400 text-xs">${r.subject}</div></div>
+        </div>`;
+      });
+      setTimeout(() => location.reload(), 2000);
+    } else {
+      body.innerHTML = `<div class="text-red-600">${data.error}</div>`;
+    }
+  } catch(e) {
+    document.getElementById('batch-result').classList.remove('hidden');
+    document.getElementById('batch-result-body').innerHTML = `<div class="text-red-600">Request failed: ${e}</div>`;
+  }
+  btn.disabled = false;
+  btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"/></svg> Send Now (3–5)`;
+}
+
+async function markReplied(email, replyType, rowId) {
+  if (!replyType) return;
+  await fetch('/api/cold-emails/mark-replied', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ email, reply_type: replyType })
+  });
+  // if negative, also blocklist
+  if (replyType === 'NEGATIVE') {
+    await fetch('/api/cold-emails/blocklist', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email, reason: 'replied_negative' })
+    });
+  }
+  showToast(`Marked as ${replyType}`, replyType === 'POSITIVE' ? 'green' : 'gray');
+  setTimeout(() => location.reload(), 800);
+}
+
+async function deleteQueue(id) {
+  await fetch('/api/cold-emails/delete-queue', {
+    method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({id})
+  });
+  document.getElementById('qrow-' + id)?.remove();
+}
+
+async function submitManualLog() {
+  const email   = document.getElementById('ml-email').value.trim();
+  const name    = document.getElementById('ml-name').value.trim();
+  const firm    = document.getElementById('ml-firm').value.trim();
+  const subject = document.getElementById('ml-subject').value.trim();
+  const reply   = document.getElementById('ml-reply').value;
+  if (!email) { showToast('Email is required', 'red'); return; }
+  const res  = await fetch('/api/cold-emails/manual-log', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ email, first_name: name, firm_name: firm, subject, reply_type: reply })
+  });
+  const data = await res.json();
+  if (data.ok) {
+    document.getElementById('manual-log-modal').classList.add('hidden');
+    showToast('Email logged', 'green');
+    setTimeout(() => location.reload(), 800);
+  } else {
+    showToast('Error: ' + data.error, 'red');
+  }
+}
+
+function showToast(msg, color='gray') {
+  const t = document.createElement('div');
+  t.className = `fixed bottom-5 right-5 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-lg shadow-lg z-50 transition-opacity`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; setTimeout(() => t.remove(), 400); }, 3000);
+}
+</script>
+{% endblock %}

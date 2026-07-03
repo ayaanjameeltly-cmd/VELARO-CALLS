@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Velaro — Sent Emails</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>* { font-family: 'Inter', sans-serif; } .mono { font-family: 'JetBrains Mono', monospace; }</style>
+</head>
+<body class="bg-gray-50 text-gray-900 text-sm">
+<div class="max-w-4xl mx-auto p-6">
+
+  <!-- Nav -->
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3">
+      <a href="/" class="text-xs text-gray-400 hover:text-gray-700">Accounts</a>
+      <span class="text-gray-300">·</span>
+      <a href="/compose" class="text-xs text-gray-400 hover:text-gray-700">Compose</a>
+      <span class="text-gray-300">·</span>
+      <a href="/sequences" class="text-xs text-gray-400 hover:text-gray-700">Sequences</a>
+      <span class="text-gray-300">·</span>
+      <a href="/sent" class="text-xs text-gray-700 font-medium">Sent</a>
+      <span class="text-gray-300">·</span>
+      <a href="/scheduled" class="text-xs text-gray-400 hover:text-gray-700">Scheduled</a>
+    </div>
+    <span class="mono text-xs text-gray-400">VELARO GMAIL</span>
+  </div>
+
+  <h1 class="text-xl font-semibold mb-1">Sent Emails</h1>
+  <p class="text-xs text-gray-400 mb-5">Every email fired — auto-send, manual, and sequences</p>
+
+  <!-- Stats row -->
+  <div class="grid grid-cols-3 gap-3 mb-5">
+    <div class="bg-white border border-gray-200 rounded-xl p-4 text-center">
+      <div class="text-xs text-gray-400 mb-1">Today</div>
+      <div class="text-2xl font-semibold mono text-indigo-600">{{ today }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">emails</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4 text-center">
+      <div class="text-xs text-gray-400 mb-1">Last 7 Days</div>
+      <div class="text-2xl font-semibold mono text-violet-600">{{ this_wk }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">emails</div>
+    </div>
+    <div class="bg-white border border-gray-200 rounded-xl p-4 text-center">
+      <div class="text-xs text-gray-400 mb-1">All Time</div>
+      <div class="text-2xl font-semibold mono text-gray-700">{{ total }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">emails</div>
+    </div>
+  </div>
+
+  <!-- Daily volume bars -->
+  {% if by_day %}
+  <div class="bg-white border border-gray-200 rounded-xl p-5 mb-5">
+    <div class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-4">Daily Volume (last 14 days)</div>
+    {% set max_cnt = by_day | map(attribute='cnt') | max %}
+    <div class="space-y-2">
+      {% for d in by_day %}
+      <div class="flex items-center gap-3">
+        <span class="text-xs mono text-gray-400 w-24 flex-shrink-0">{{ d.day }}</span>
+        <div class="flex-1 bg-gray-100 rounded-full h-2">
+          <div class="h-2 rounded-full bg-indigo-500" style="width:{{ ((d.cnt / max_cnt) * 100)|int }}%"></div>
+        </div>
+        <span class="text-xs mono text-gray-600 w-8 text-right">{{ d.cnt }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Sent log table -->
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Send Log</div>
+      <span class="text-xs text-gray-400">{{ rows|length }} most recent</span>
+    </div>
+    {% if rows %}
+    <table class="w-full">
+      <thead>
+        <tr class="border-b border-gray-50">
+          <th class="text-left text-xs text-gray-400 font-normal px-5 py-2">Date</th>
+          <th class="text-left text-xs text-gray-400 font-normal px-3 py-2">To</th>
+          <th class="text-left text-xs text-gray-400 font-normal px-3 py-2">Subject</th>
+          <th class="text-left text-xs text-gray-400 font-normal px-3 py-2">From</th>
+          <th class="text-left text-xs text-gray-400 font-normal px-3 py-2">Status</th>
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-gray-50">
+      {% set prev_day = namespace(val='') %}
+      {% for r in rows %}
+      {% if r.day != prev_day.val %}
+      {% set prev_day.val = r.day %}
+      <tr class="bg-gray-50">
+        <td colspan="5" class="px-5 py-1.5 text-xs font-semibold text-gray-500">{{ r.day }}</td>
+      </tr>
+      {% endif %}
+      <tr class="hover:bg-gray-50 transition-colors">
+        <td class="px-5 py-2.5 text-xs mono text-gray-400">{{ r.sent_at[11:16] }}</td>
+        <td class="px-3 py-2.5 text-xs text-gray-700 font-medium">{{ r.to_email }}</td>
+        <td class="px-3 py-2.5 text-xs text-gray-500 max-w-xs truncate">{{ r.subject }}</td>
+        <td class="px-3 py-2.5 text-xs mono text-gray-400">{{ r.account_email.split('@')[0] }}</td>
+        <td class="px-3 py-2.5">
+          <span class="px-2 py-0.5 rounded-full text-xs {{ 'bg-green-100 text-green-700' if r.status=='sent' else 'bg-red-100 text-red-700' }}">
+            {{ r.status }}
+          </span>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="px-5 py-12 text-center text-xs text-gray-400">No emails sent yet</div>
+    {% endif %}
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,745 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-xl font-semibold text-gray-900">Lead Entry</h1>
+    <p class="text-xs text-gray-500 mt-0.5">Open firm websites, find contacts, add them manually</p>
+  </div>
+  <a href="/leads" class="text-xs text-indigo-600 hover:text-indigo-800 hidden" id="viewLeadsLink">View saved leads →</a>
+</div>
+
+<!-- CSV Import -->
+<div class="bg-white border border-gray-200 rounded-xl p-5 mb-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center gap-2">
+      <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+      <h2 class="text-sm font-semibold text-gray-900">Import Google Maps CSV</h2>
+    </div>
+    <button type="button" onclick="toggleGuide()" class="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z"/></svg>
+      What to name your columns
+    </button>
+  </div>
+  <div id="colGuide" class="hidden mb-4 p-4 bg-blue-50 border border-blue-100 rounded-xl text-xs">
+    <p class="font-medium text-blue-900 mb-2">Use these exact column names in the scraper tool:</p>
+    <div class="grid grid-cols-4 gap-x-6 gap-y-1.5 font-mono text-blue-800 mb-3">
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 1</span><span class="font-semibold">(blank)</span><span class="text-blue-500 text-xs">company name</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 2</span><span class="font-semibold">type</span><span class="text-blue-500 text-xs">PI attorney / Law firm</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 3</span><span class="font-semibold">stars</span><span class="text-blue-500 text-xs">rating</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 4</span><span class="font-semibold">reviews</span><span class="text-blue-500 text-xs">review count</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 5</span><span class="font-semibold">details</span><span class="text-blue-500 text-xs">years + location</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 6</span><span class="font-semibold">phone</span><span class="text-blue-500 text-xs">phone number</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 7</span><span class="font-semibold">hours</span><span class="text-blue-500 text-xs">opening times</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 8</span><span class="font-semibold">time</span><span class="text-blue-500 text-xs">Closed / Open 24 hours</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 9</span><span class="font-semibold">pxqAo</span><span class="text-blue-500 text-xs">provides</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 10</span><span class="font-semibold">pxqAo 2</span><span class="text-blue-500 text-xs">practice areas</span></div>
+      <div class="flex flex-col"><span class="text-blue-400 text-xs">Col 11</span><span class="font-semibold">web</span><span class="text-blue-500 text-xs">website URL</span></div>
+    </div>
+    <p class="text-blue-700 text-xs">
+      <strong>Keeps:</strong> Personal injury attorney · Law firm &nbsp;·&nbsp;
+      <strong>Skips:</strong> Lawyer · Social security attorney · Open 24 hours
+    </p>
+  </div>
+  <form id="csvForm" method="POST" action="/leads/import" enctype="multipart/form-data">
+    <input type="hidden" name="niche" value="law">
+    <input type="file" id="csvFileInput" name="file" accept=".csv" multiple class="hidden" onchange="csvFilesChosen(this.files)">
+    <div id="csvDropZone"
+      class="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors"
+      onclick="document.getElementById('csvFileInput').click()"
+      ondragover="csvDragOver(event)" ondragleave="csvDragLeave(event)" ondrop="csvDrop(event)">
+      <svg class="w-7 h-7 text-gray-300 mx-auto mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+      <p id="csvDropLabel" class="text-sm text-gray-500">Drop CSV files here, or <span class="text-gray-900 underline">click to browse</span></p>
+      <p class="text-xs text-gray-400 mt-0.5">Multiple files supported</p>
+    </div>
+    <div id="csvFileList" class="mt-2 space-y-1 hidden"></div>
+    <!-- Action buttons — shown after files chosen -->
+    <div id="csvActions" class="hidden mt-3">
+      <div class="flex flex-wrap items-center gap-3">
+        <!-- Primary: load website cards from CSV -->
+        <button type="button" id="csvLoadBtn" onclick="loadWebsitesFromCSV()"
+          class="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+          Load Websites from CSV
+        </button>
+        <!-- Secondary: send companies straight to Leads -->
+        <button id="csvImportBtn" type="submit"
+          class="px-4 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5"/></svg>
+          Import companies to Leads
+        </button>
+      </div>
+      <p class="text-xs text-gray-400 mt-2"><strong class="text-gray-600">Load Websites</strong> — opens firm sites as cards so you can manually find contacts &nbsp;·&nbsp; <strong class="text-gray-600">Import companies</strong> — saves firm names/phones straight to Leads</p>
+    </div>
+  </form>
+</div>
+
+<!-- Divider -->
+<div class="flex items-center gap-3 mb-5">
+  <div class="flex-1 border-t border-gray-100"></div>
+  <span class="text-xs text-gray-400 uppercase tracking-wide">or add leads from websites manually</span>
+  <div class="flex-1 border-t border-gray-100"></div>
+</div>
+
+<!-- URL Input -->
+<div class="bg-white border border-gray-200 rounded-xl p-5 mb-5">
+  <label class="block text-xs font-medium text-gray-700 mb-2">Website URLs <span class="text-gray-400 font-normal">(one per line)</span></label>
+  <textarea id="urlInput" rows="4"
+    placeholder="https://smithlawfirm.com&#10;https://johnstoninjurylaw.com&#10;https://texastrialattorneys.com"
+    class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-gray-900 resize-y"></textarea>
+  <div class="mt-3">
+    <button type="button" onclick="loadWebsites()"
+      class="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/>
+      </svg>
+      Load Websites
+    </button>
+  </div>
+</div>
+
+<!-- Website cards (shown after Load) -->
+<div id="websiteCardsWrap" class="hidden mb-5">
+  <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center gap-2">
+      <span class="text-sm font-semibold text-gray-900">Websites</span>
+      <span id="websiteCount" class="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs mono">0</span>
+    </div>
+    <span class="text-xs text-gray-400">Click <strong class="text-gray-600">Open Website</strong> to visit each firm, then fill in the contact details</span>
+  </div>
+  <div id="websiteCards" class="space-y-4"></div>
+</div>
+
+<!-- Leads saved log (shown after first lead added) -->
+<div id="reviewSection" class="hidden">
+  <div class="flex items-center justify-between mb-3">
+    <div class="flex items-center gap-2">
+      <h2 class="text-sm font-semibold text-gray-900">Saved to Velaro</h2>
+      <span id="reviewCount" class="px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-normal mono">0</span>
+    </div>
+    <a href="/leads" class="text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+      View in Leads →
+    </a>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead class="bg-gray-50 border-b border-gray-100">
+          <tr>
+            <th class="px-3 py-2.5 text-left font-medium text-gray-500">Name</th>
+            <th class="px-3 py-2.5 text-left font-medium text-gray-500">Title</th>
+            <th class="px-3 py-2.5 text-left font-medium text-gray-500">Company</th>
+            <th class="px-3 py-2.5 text-left font-medium text-gray-500">Email</th>
+            <th class="px-3 py-2.5 text-left font-medium text-gray-500">Phone</th>
+            <th class="px-3 py-2.5 text-left font-medium text-gray-500">LinkedIn</th>
+            <th class="px-3 py-2.5 w-10"></th>
+          </tr>
+        </thead>
+        <tbody id="reviewBody" class="divide-y divide-gray-50"></tbody>
+      </table>
+    </div>
+    <!-- Add extra lead inline form -->
+    <div class="border-t border-gray-100">
+      <button type="button" onclick="toggleExtraForm()" id="addExtraBtn"
+        class="w-full flex items-center gap-2 px-4 py-3 text-xs text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        Add another lead manually
+      </button>
+      <div id="extraForm" class="hidden border-t border-gray-100 px-4 py-4 bg-gray-50">
+        <p class="text-xs text-gray-400 mb-3">Add a lead not tied to any website card above</p>
+        <div class="grid grid-cols-3 gap-3 mb-3">
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Full Name <span class="text-red-400">*</span></label>
+            <input id="ef-name" type="text" placeholder="John Smith"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Title</label>
+            <input id="ef-title" type="text" placeholder="Personal Injury Attorney"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Company</label>
+            <input id="ef-company" type="text" placeholder="Smith Law Firm"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Email</label>
+            <input id="ef-email" type="email" placeholder="john@smithlaw.com"
+              oninput="this.value=this.value.toLowerCase()"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">Phone</label>
+            <input id="ef-phone" type="text" placeholder="(555) 123-4567"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-500 mb-1">LinkedIn URL</label>
+            <input id="ef-linkedin" type="text" placeholder="https://linkedin.com/in/..."
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-gray-900">
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="addExtraLead()"
+            class="px-4 py-2 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+            Add Lead
+          </button>
+          <span id="ef-status" class="text-xs text-gray-400"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let cardCompanies = {};
+let csvCompanyMap = {};   // url → company name extracted from CSV
+let loadedUrls = new Set();
+let nextCardIdx = 0;
+let savedCount = 0;
+
+// Auto-populate from ?urls= query param (set by Leads page "Scrape Websites →")
+(function() {
+  const params = new URLSearchParams(window.location.search);
+  const urls = params.get('urls');
+  if (urls) {
+    const init = () => {
+      const el = document.getElementById('urlInput');
+      if (el) {
+        el.value = decodeURIComponent(urls);
+        loadWebsites();
+      }
+    };
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  }
+})();
+
+// ── Load websites into cards ───────────────────────────────────────────────
+function loadWebsites() {
+  const raw = document.getElementById('urlInput').value.trim();
+  if (!raw) { alert('Paste at least one URL.'); return; }
+
+  const urls = raw.split('\n').map(u => u.trim()).filter(Boolean).map(u =>
+    u.startsWith('http') ? u : 'https://' + u
+  );
+
+  const container = document.getElementById('websiteCards');
+  let added = 0, skipped = 0;
+
+  urls.forEach(url => {
+    const host = normalizeHost(url);
+    if (loadedUrls.has(host)) { skipped++; return; }
+    loadedUrls.add(host);
+    const clean = url.replace(/\/$/, '');
+    const company = csvCompanyMap[clean] || csvCompanyMap[host] || domainLabel(clean);
+    cardCompanies[host] = company;
+    const cardIdx = nextCardIdx++;
+    container.appendChild(buildCard(clean, company, cardIdx));
+    added++;
+  });
+
+  document.getElementById('websiteCardsWrap').classList.remove('hidden');
+  document.getElementById('websiteCount').textContent = loadedUrls.size;
+
+  if (skipped > 0 && added === 0) {
+    showNotice(`All ${skipped} URL${skipped>1?'s':''} already loaded.`, 'amber');
+  } else if (skipped > 0) {
+    showNotice(`Added ${added} new site${added>1?'s':''}. Skipped ${skipped} already loaded.`, 'amber');
+  }
+
+  if (added > 0) {
+    setTimeout(() => container.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+  }
+}
+
+function domainLabel(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch { return url; }
+}
+
+// Normalize to bare hostname for dedup (strips protocol, www, trailing slash, path)
+function normalizeHost(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '').toLowerCase();
+  } catch {
+    return url.replace(/^https?:\/\//,'').replace(/^www\./,'').split('/')[0].toLowerCase();
+  }
+}
+
+// ── Build a website card ───────────────────────────────────────────────────
+function buildCard(url, domain, cardIdx) {
+  const card = document.createElement('div');
+  card.className = 'bg-white border border-gray-200 rounded-xl overflow-hidden';
+  card.id = 'card-' + cardIdx;
+  card.dataset.url = url;
+
+  card.innerHTML = `
+    <div class="flex items-center justify-between px-5 py-3 bg-gray-50 border-b border-gray-100">
+      <div class="flex items-center gap-3">
+        <img src="https://www.google.com/s2/favicons?sz=16&domain_url=${encodeURIComponent(url)}" class="w-4 h-4 rounded" onerror="this.style.display='none'">
+        <span class="text-sm font-semibold text-gray-800">${esc(domain)}</span>
+      </div>
+      <div class="flex items-center gap-2">
+        <a href="${esc(url)}" target="_blank"
+          class="flex items-center gap-1.5 text-xs text-indigo-600 hover:text-indigo-800 font-medium px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+          Open Website
+        </a>
+        <button type="button" onclick="deleteCard(${cardIdx})" title="Remove this site"
+          class="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+    <div id="forms-${cardIdx}" class="divide-y divide-gray-50">
+      ${buildForm(cardIdx, 0, domain)}
+    </div>
+    <div class="px-5 py-3 border-t border-gray-100 flex items-center justify-between gap-3">
+      <button type="button" onclick="addAnotherPerson(${cardIdx}, '${esc(url)}')"
+        class="text-xs text-gray-500 hover:text-gray-900 flex items-center gap-1.5 transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        Add another person from this firm
+      </button>
+      <div class="flex items-center gap-2">
+        <span id="card-status-${cardIdx}" class="text-xs text-gray-400"></span>
+        <button type="button" id="card-save-${cardIdx}" onclick="saveCardLeads(${cardIdx})"
+          class="px-4 py-1.5 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors flex items-center gap-1.5">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+          Save to Velaro
+        </button>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+function deleteCard(cardIdx) {
+  const card = document.getElementById('card-' + cardIdx);
+  if (!card) return;
+  const host = normalizeHost(card.dataset.url || '');
+  card.remove();
+  if (host) loadedUrls.delete(host);
+  document.getElementById('websiteCount').textContent = loadedUrls.size;
+}
+
+function buildForm(cardIdx, formIdx, companyDefault) {
+  const fid = `f-${cardIdx}-${formIdx}`;
+  return `
+    <div id="${fid}" class="px-5 py-4 form-entry" data-card="${cardIdx}">
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Full Name <span class="text-red-400">*</span></label>
+          <input id="${fid}-name" type="text" placeholder="John Smith"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Title</label>
+          <input id="${fid}-title" type="text" placeholder="Personal Injury Attorney"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Company</label>
+          <input id="${fid}-company" type="text" value="${esc(companyDefault)}"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Email</label>
+          <input id="${fid}-email" type="email" placeholder="john@smithlaw.com"
+            oninput="this.value=this.value.toLowerCase()" onblur="checkEmailDup(this)"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">Phone</label>
+          <input id="${fid}-phone" type="text" placeholder="(555) 123-4567"
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 mb-1">LinkedIn URL</label>
+          <input id="${fid}-linkedin" type="text" placeholder="https://linkedin.com/in/..."
+            class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── Add another person form to a card ─────────────────────────────────────
+let formCounts = {};  // cardIdx → next form index
+
+function addAnotherPerson(cardIdx, url) {
+  if (!formCounts[cardIdx]) formCounts[cardIdx] = 1;
+  const formIdx = formCounts[cardIdx]++;
+  const company = cardCompanies[normalizeHost(url)] || domainLabel(url);
+  const container = document.getElementById(`forms-${cardIdx}`);
+  const div = document.createElement('div');
+  div.innerHTML = buildForm(cardIdx, formIdx, company);
+  container.appendChild(div.firstElementChild);
+}
+
+// ── Save all filled forms on a card in one click ──────────────────────────
+async function checkEmailDup(input) {
+  const email = input.value.trim();
+  if (!email || !email.includes('@')) return;
+  // Remove any previous badge
+  const prev = input.parentElement.querySelector('.dup-badge');
+  if (prev) prev.remove();
+  input.classList.remove('border-amber-400','bg-amber-50');
+  try {
+    const res  = await fetch('/api/leads/check?email=' + encodeURIComponent(email));
+    const data = await res.json();
+    if (data.duplicate) {
+      input.classList.add('border-amber-400','bg-amber-50');
+      const badge = document.createElement('p');
+      badge.className = 'dup-badge text-xs text-amber-600 mt-1 flex items-center gap-1';
+      badge.innerHTML = `<svg class="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Already in Velaro — <a href="/leads/${data.id}" target="_blank" class="underline font-medium">${data.name}</a>`;
+      input.parentElement.appendChild(badge);
+    }
+  } catch {}
+}
+
+async function saveCardLeads(cardIdx) {
+  const card    = document.getElementById(`card-${cardIdx}`);
+  const saveBtn = document.getElementById(`card-save-${cardIdx}`);
+  const status  = document.getElementById(`card-status-${cardIdx}`);
+  const sourceUrl = card ? card.dataset.url : '';
+
+  // Collect all form entries in this card that have a name filled in
+  const forms = card.querySelectorAll('.form-entry');
+  const payloads = [];
+  let missingName = null;
+
+  forms.forEach(form => {
+    const fid  = form.id;
+    const name = document.getElementById(`${fid}-name`).value.trim();
+    if (!name) { missingName = fid; return; }
+    payloads.push({
+      name,
+      title:      document.getElementById(`${fid}-title`).value.trim(),
+      company:    document.getElementById(`${fid}-company`).value.trim(),
+      email:      document.getElementById(`${fid}-email`).value.trim(),
+      phone:      document.getElementById(`${fid}-phone`).value.trim(),
+      linkedin:   document.getElementById(`${fid}-linkedin`).value.trim(),
+      source_url: sourceUrl,
+    });
+  });
+
+  if (!payloads.length) {
+    // Highlight missing name on first form
+    if (missingName) {
+      const el = document.getElementById(`${missingName}-name`);
+      el.classList.add('border-red-400','ring-2','ring-red-200');
+      el.focus();
+      setTimeout(() => el.classList.remove('border-red-400','ring-2','ring-red-200'), 1500);
+    }
+    return;
+  }
+
+  saveBtn.disabled = true;
+  status.textContent = 'Saving…';
+
+  let saved = 0, dupes = 0;
+  for (const payload of payloads) {
+    try {
+      const res  = await fetch('/api/leads/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      const data = await res.json();
+      if (data.ok) {
+        addLogRow(payload); saved++;
+      } else if (data.duplicate) {
+        dupes++;
+        // Mark the email field for this person with a duplicate badge
+        const forms = card.querySelectorAll('.form-entry');
+        forms.forEach(form => {
+          const emailEl = form.querySelector('[id$="-email"]');
+          if (emailEl && emailEl.value.trim().toLowerCase() === (payload.email||'').toLowerCase()) {
+            emailEl.classList.add('border-amber-400', 'bg-amber-50');
+            let badge = form.querySelector('.dup-badge');
+            if (!badge) {
+              badge = document.createElement('p');
+              badge.className = 'dup-badge text-xs text-amber-600 mt-1 flex items-center gap-1';
+              badge.innerHTML = `<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg> Already in Velaro — <a href="/leads/${data.id}" target="_blank" class="underline font-medium">${data.existing_name}</a>`;
+              emailEl.parentElement.appendChild(badge);
+            }
+          }
+        });
+      }
+    } catch { /* continue */ }
+  }
+
+  const total = saved + dupes;
+  if (saved > 0 && dupes === 0) {
+    status.textContent = `✓ ${saved} saved`;
+    status.className = 'text-xs text-green-600 font-medium';
+    saveBtn.textContent = 'Saved';
+    saveBtn.className = 'px-4 py-1.5 bg-gray-100 text-gray-400 text-xs rounded-lg cursor-not-allowed';
+  } else if (saved > 0 && dupes > 0) {
+    status.textContent = `✓ ${saved} saved · ${dupes} duplicate${dupes>1?'s':''}`;
+    status.className = 'text-xs text-amber-600 font-medium';
+    saveBtn.textContent = 'Saved';
+    saveBtn.className = 'px-4 py-1.5 bg-gray-100 text-gray-400 text-xs rounded-lg cursor-not-allowed';
+  } else if (dupes === payloads.length) {
+    status.textContent = `Already in Velaro`;
+    status.className = 'text-xs text-amber-600 font-medium';
+    saveBtn.textContent = 'Duplicate';
+    saveBtn.className = 'px-4 py-1.5 bg-amber-100 text-amber-700 text-xs rounded-lg cursor-not-allowed';
+  } else {
+    status.textContent = `${saved}/${payloads.length} saved`;
+    status.className = 'text-xs text-amber-600';
+    saveBtn.disabled = false;
+  }
+}
+
+// ── Saved log ─────────────────────────────────────────────────────────────
+function addLogRow(lead) {
+  const section = document.getElementById('reviewSection');
+  section.classList.remove('hidden');
+  savedCount++;
+  document.getElementById('reviewCount').textContent = savedCount;
+
+  const tbody = document.getElementById('reviewBody');
+  const tr = document.createElement('tr');
+  tr.className = 'hover:bg-gray-50';
+  tr.innerHTML = `
+    <td class="px-3 py-2.5 font-medium text-gray-900 whitespace-nowrap">${esc(lead.name)}</td>
+    <td class="px-3 py-2.5 text-gray-500 max-w-36 truncate">${esc(lead.title)||'<span class="text-gray-300">—</span>'}</td>
+    <td class="px-3 py-2.5 text-gray-700 max-w-36 truncate">${esc(lead.company)||'<span class="text-gray-300">—</span>'}</td>
+    <td class="px-3 py-2.5 text-indigo-600 mono">${lead.email?`<a href="mailto:${esc(lead.email)}">${esc(lead.email)}</a>`:'<span class="text-gray-300">—</span>'}</td>
+    <td class="px-3 py-2.5 text-gray-600 mono whitespace-nowrap">${esc(lead.phone)||'<span class="text-gray-300">—</span>'}</td>
+    <td class="px-3 py-2.5">${lead.linkedin?`<a href="${esc(lead.linkedin)}" target="_blank" class="text-blue-600 hover:underline">in/…</a>`:'<span class="text-gray-300">—</span>'}</td>
+    <td class="px-3 py-2.5 text-green-500 text-xs font-medium">✓</td>
+  `;
+  tbody.prepend(tr);
+
+  if (savedCount === 1) {
+    document.getElementById('viewLeadsLink').classList.remove('hidden');
+  }
+}
+
+
+// ── CSV import drag & drop ────────────────────────────────────────────────
+let csvFileObjects = [];  // stored for client-side parsing
+
+function csvFilesChosen(files) {
+  if (!files.length) return;
+  csvFileObjects = Array.from(files);
+  const list = document.getElementById('csvFileList');
+  list.innerHTML = '';
+  csvFileObjects.forEach(f => {
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 text-xs text-gray-600 px-2 py-1 bg-gray-50 rounded-lg';
+    row.innerHTML = `<svg class="w-3.5 h-3.5 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg><span class="mono truncate">${f.name}</span><span class="ml-auto text-gray-400">${(f.size/1024).toFixed(1)} KB</span>`;
+    list.appendChild(row);
+  });
+  list.classList.remove('hidden');
+  document.getElementById('csvDropLabel').innerHTML = `<span class="text-gray-900 font-medium">${files.length} file${files.length>1?'s':''} ready</span> — drop more or <span class="underline">browse</span>`;
+  document.getElementById('csvActions').classList.remove('hidden');
+}
+
+// Parse CSV files in the browser and extract website URLs → load as cards
+async function loadWebsitesFromCSV() {
+  if (!csvFileObjects.length) { alert('No CSV files loaded.'); return; }
+
+  const skipDomains = ['google.com/maps','google.com/search','maps.google','goo.gl/maps',
+                       'maps.app.goo','facebook.com','yelp.com','instagram.com'];
+  const skipTypes   = ['lawyer','social security','criminal','immigration','family','divorce',
+                       'bankruptcy','traffic','estate','tax','real estate','open 24 hours'];
+
+  const allUrls = [];
+
+  for (const file of csvFileObjects) {
+    const text = await file.text();
+    const rows = parseCSV(text);
+    if (rows.length < 2) continue;
+
+    const headers = rows[0].map(h => h.toLowerCase().trim());
+    const typeIdx    = headers.findIndex(h => h === 'type' || h === 'rllt' || h.includes('type'));
+    const webIdx     = headers.findIndex(h => h === 'web' || h.includes('website') || h.includes('url'));
+    const timeIdx    = headers.findIndex(h => h === 'time' || h.includes('hours'));
+    const companyIdx = headers.findIndex(h => h === 'company' || h === 'name' || h === 'title' || h.includes('firm') || h.includes('company'));
+    // fallback: column 0 is usually company name in Google Maps exports
+    const companyCol = companyIdx >= 0 ? companyIdx : 0;
+
+    for (let i = 1; i < rows.length; i++) {
+      const vals = rows[i];
+      if (!vals.length) continue;
+
+      // Skip "Open 24 hours" rows
+      const timeVal = timeIdx >= 0 ? (vals[timeIdx] || '').toLowerCase() : '';
+      if (timeVal.includes('open 24')) continue;
+
+      // Filter by type if column exists
+      if (typeIdx >= 0) {
+        const typeVal = (vals[typeIdx] || '').toLowerCase();
+        const isPI = typeVal.includes('personal injury') || typeVal.includes('pi attorney') || typeVal.includes('law firm');
+        const isBadType = skipTypes.some(s => typeVal.includes(s));
+        if (isBadType || (!isPI && typeVal !== '')) continue;
+      }
+
+      // Find website URL — check named column first, then scan all columns
+      let url = '';
+      if (webIdx >= 0 && vals[webIdx]) {
+        url = vals[webIdx].trim();
+      }
+      if (!url) {
+        // Scan all columns for an http URL that isn't a Maps/social link
+        for (const v of vals) {
+          const s = (v || '').trim();
+          if (s.startsWith('http') && !skipDomains.some(d => s.includes(d))) {
+            url = s; break;
+          }
+        }
+      }
+
+      if (url && url.startsWith('http') && !skipDomains.some(d => url.includes(d))) {
+        url = url.replace(/\/$/, '');
+        if (!allUrls.includes(url)) {
+          allUrls.push(url);
+          const companyName = (vals[companyCol] || '').trim();
+          if (companyName) {
+            csvCompanyMap[url] = companyName;
+            csvCompanyMap[normalizeHost(url)] = companyName;
+          }
+        }
+      }
+    }
+  }
+
+  if (!allUrls.length) {
+    alert('No website URLs found in the CSV.\nMake sure the "web" column contains firm website links.');
+    return;
+  }
+
+  // Put into textarea and load cards
+  document.getElementById('urlInput').value = allUrls.join('\n');
+  loadWebsites();
+  // Scroll past the URL box to the cards
+  setTimeout(() => document.getElementById('websiteCards').scrollIntoView({ behavior: 'smooth', block: 'start' }), 200);
+}
+
+// Minimal CSV parser (handles quoted fields with commas/newlines)
+function parseCSV(text) {
+  const rows = [];
+  let row = [], field = '', inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i], next = text[i+1];
+    if (inQuote) {
+      if (ch === '"' && next === '"') { field += '"'; i++; }
+      else if (ch === '"') { inQuote = false; }
+      else { field += ch; }
+    } else {
+      if (ch === '"') { inQuote = true; }
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else if (ch === '\r') { /* skip */ }
+      else { field += ch; }
+    }
+  }
+  if (field || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+function csvDragOver(e) {
+  e.preventDefault();
+  const z = document.getElementById('csvDropZone');
+  z.classList.add('border-gray-900','bg-gray-50');
+  z.classList.remove('border-gray-200');
+}
+function csvDragLeave(e) {
+  const z = document.getElementById('csvDropZone');
+  z.classList.remove('border-gray-900','bg-gray-50');
+  z.classList.add('border-gray-200');
+}
+function csvDrop(e) {
+  e.preventDefault();
+  csvDragLeave(e);
+  const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.csv'));
+  if (!files.length) { alert('Please drop CSV files only.'); return; }
+  const dt = new DataTransfer();
+  files.forEach(f => dt.items.add(f));
+  document.getElementById('csvFileInput').files = dt.files;
+  csvFilesChosen(files);
+}
+
+function toggleGuide() {
+  document.getElementById('colGuide').classList.toggle('hidden');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Extra manual lead (review table inline form) ───────────────────────────
+function toggleExtraForm() {
+  const form = document.getElementById('extraForm');
+  const btn  = document.getElementById('addExtraBtn');
+  const open = form.classList.toggle('hidden');
+  btn.querySelector('svg').style.transform = open ? '' : 'rotate(45deg)';
+  if (!open) document.getElementById('ef-name').focus();
+}
+
+async function addExtraLead() {
+  const name = document.getElementById('ef-name').value.trim();
+  if (!name) {
+    const el = document.getElementById('ef-name');
+    el.classList.add('border-red-400', 'ring-2', 'ring-red-200');
+    el.focus();
+    setTimeout(() => el.classList.remove('border-red-400', 'ring-2', 'ring-red-200'), 1500);
+    return;
+  }
+
+  const status = document.getElementById('ef-status');
+  const btn = document.querySelector('#extraForm button[onclick="addExtraLead()"]');
+  btn.disabled = true;
+  status.textContent = 'Saving…';
+  status.className = 'text-xs text-gray-400';
+
+  const payload = {
+    name,
+    title:    document.getElementById('ef-title').value.trim(),
+    company:  document.getElementById('ef-company').value.trim(),
+    email:    document.getElementById('ef-email').value.trim(),
+    phone:    document.getElementById('ef-phone').value.trim(),
+    linkedin: document.getElementById('ef-linkedin').value.trim(),
+    source_url: '',
+  };
+
+  try {
+    const res  = await fetch('/api/leads/add', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (data.ok) {
+      addLogRow(payload);
+      ['ef-name','ef-title','ef-company','ef-email','ef-phone','ef-linkedin'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      status.textContent = '';
+      document.getElementById('ef-name').focus();
+    } else {
+      status.textContent = data.error || 'Error';
+      status.className = 'text-xs text-red-500';
+    }
+  } catch {
+    status.textContent = 'Network error';
+    status.className = 'text-xs text-red-500';
+  }
+  btn.disabled = false;
+}
+
+function showNotice(msg, type) {
+  const colors = { amber: 'bg-amber-50 border-amber-200 text-amber-800', green: 'bg-green-50 border-green-200 text-green-800' };
+  const el = document.createElement('div');
+  el.className = `fixed bottom-5 right-5 z-50 px-4 py-3 border rounded-xl text-sm shadow-lg ${colors[type]||colors.amber}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+</script>
+{% endblock %}

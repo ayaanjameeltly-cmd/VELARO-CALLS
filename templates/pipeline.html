@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-lg font-medium mb-4">Pipeline</h1>
+<div class="overflow-x-auto pb-4">
+<div class="flex gap-3 min-w-max">
+{% set labels = {'new':'New','day1':'Day 1','day2':'Day 2','day3':'Day 3','day4':'Day 4','day5':'Day 5','replied':'Replied','call_booked':'Call Booked','proposal':'Proposal','closed':'Closed'} %}
+{% for stage in stages %}
+<div class="w-52 flex-shrink-0">
+  <div class="flex items-center justify-between mb-2 px-1">
+    <span class="text-xs font-medium text-gray-600">{{ labels[stage] }}</span>
+    <span class="mono text-xs text-gray-400">{{ data[stage]|length }}</span>
+  </div>
+  <div class="space-y-2">
+    {% for lead in data[stage] %}
+    <a href="/leads/{{ lead['id'] }}" class="block bg-white rounded-lg border border-gray-100 p-3 hover:border-blue-200 hover:shadow-sm transition-all {{ 'overdue' if lead['overdue'] }}">
+      <div class="font-medium text-xs mb-0.5">{{ lead['name'] }}</div>
+      <div class="text-xs text-gray-400 mb-2 truncate">{{ lead['company'] or '—' }}</div>
+      <div class="flex items-center justify-between">
+        <span class="text-xs px-1.5 py-0.5 rounded-full niche-{{ lead['niche'] }}">{{ lead['niche'] }}</span>
+        {% if lead['score'] %}<span class="mono text-xs text-gray-400">{{ lead['score'] }}/10</span>{% endif %}
+      </div>
+      {% if lead['overdue'] %}<div class="text-xs text-amber-600 mt-1.5">⚠ needs action</div>{% endif %}
+    </a>
+    {% endfor %}
+    {% if not data[stage] %}
+    <div class="border-2 border-dashed border-gray-100 rounded-lg p-4 text-center text-xs text-gray-300">empty</div>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+</div>
+</div>
+{% endblock %}

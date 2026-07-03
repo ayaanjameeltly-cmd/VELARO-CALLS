@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-6">
+  <div>
+    <h1 class="text-lg font-semibold">90-Day Action Plan</h1>
+    <p class="text-xs text-gray-400 mt-0.5">Started {{ start_date }} — check off tasks as you complete them</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <div class="text-center bg-gray-900 text-white rounded-xl px-5 py-3">
+      <div class="text-2xl font-bold mono">{{ day_num }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">of 90 days</div>
+    </div>
+    <div class="bg-white border border-gray-100 rounded-xl px-5 py-3">
+      {% set total_done = grouped.values()|sum(attribute='done') %}
+      {% set total_all  = grouped.values()|sum(attribute='total') %}
+      <div class="text-2xl font-bold mono text-green-600">{{ total_done }}/{{ total_all }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">tasks done</div>
+    </div>
+  </div>
+</div>
+
+<!-- Overall progress bar -->
+{% set total_done = grouped.values()|sum(attribute='done') %}
+{% set total_all  = grouped.values()|sum(attribute='total') %}
+{% set overall_pct = ((total_done / total_all) * 100)|int if total_all else 0 %}
+<div class="bg-white border border-gray-100 rounded-xl p-4 mb-6">
+  <div class="flex items-center justify-between mb-2">
+    <span class="text-xs font-semibold text-gray-600">Overall progress</span>
+    <span class="text-xs mono text-gray-500">{{ overall_pct }}%</span>
+  </div>
+  <div class="w-full bg-gray-100 rounded-full h-2.5">
+    <div class="bg-gray-900 h-2.5 rounded-full transition-all" style="width:{{ overall_pct }}%"></div>
+  </div>
+</div>
+
+<div class="space-y-5">
+{% for ph, info in phases.items() %}
+{% set g = grouped[ph] %}
+{% set pct = ((g.done / g.total) * 100)|int if g.total else 0 %}
+{% set phase_colors = {0:'border-violet-200 bg-violet-50', 1:'border-blue-200 bg-blue-50', 2:'border-amber-200 bg-amber-50', 3:'border-green-200 bg-green-50', 4:'border-indigo-200 bg-indigo-50'} %}
+{% set bar_colors  = {0:'bg-violet-500', 1:'bg-blue-500', 2:'bg-amber-500', 3:'bg-green-500', 4:'bg-indigo-500'} %}
+{% set badge_colors= {0:'bg-violet-100 text-violet-700', 1:'bg-blue-100 text-blue-700', 2:'bg-amber-100 text-amber-700', 3:'bg-green-100 text-green-700', 4:'bg-indigo-100 text-indigo-700'} %}
+
+<div class="bg-white border border-gray-100 rounded-xl overflow-hidden">
+  <!-- Phase header -->
+  <div class="px-5 py-4 border-b border-gray-100 flex items-center gap-3">
+    <span class="text-xs font-semibold px-2.5 py-1 rounded-full {{ badge_colors[ph] }}">{{ info.days }}</span>
+    <div>
+      <div class="text-sm font-semibold text-gray-900">{{ info.label }}</div>
+    </div>
+    <div class="ml-auto flex items-center gap-3">
+      <span class="text-xs mono text-gray-500">{{ g.done }}/{{ g.total }}</span>
+      <div class="w-24 bg-gray-100 rounded-full h-1.5">
+        <div class="{{ bar_colors[ph] }} h-1.5 rounded-full transition-all" style="width:{{ pct }}%"></div>
+      </div>
+      <span class="text-xs mono {{ 'text-green-600 font-semibold' if pct == 100 else 'text-gray-400' }}">{{ pct }}%</span>
+    </div>
+  </div>
+
+  <!-- Tasks -->
+  <div class="divide-y divide-gray-50">
+  {% for task in g.tasks %}
+  <label class="flex items-start gap-3 px-5 py-3.5 cursor-pointer hover:bg-gray-50 transition-colors group" id="task-row-{{ task['id'] }}">
+    <input type="checkbox" {{ 'checked' if task['is_done'] }}
+      onchange="toggleTask({{ task['id'] }}, this)"
+      class="mt-0.5 rounded accent-gray-900 flex-shrink-0 w-4 h-4 cursor-pointer">
+    <span class="text-sm text-gray-700 group-hover:text-gray-900 leading-relaxed {{ 'line-through text-gray-400' if task['is_done'] }}" id="task-text-{{ task['id'] }}">{{ task['task_text'] }}</span>
+    {% if task['is_done'] %}
+    <span class="ml-auto text-xs text-green-500 flex-shrink-0">✓</span>
+    {% endif %}
+  </label>
+  {% endfor %}
+  </div>
+</div>
+{% endfor %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleTask(id, checkbox) {
+  const isDone = checkbox.checked ? 1 : 0;
+  const textEl = document.getElementById('task-text-' + id);
+  if (isDone) {
+    textEl.classList.add('line-through', 'text-gray-400');
+    textEl.classList.remove('text-gray-700');
+  } else {
+    textEl.classList.remove('line-through', 'text-gray-400');
+    textEl.classList.add('text-gray-700');
+  }
+  fetch('/api/action-plan/toggle', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({id: id, is_done: isDone})
+  });
+}
+</script>
+{% endblock %}

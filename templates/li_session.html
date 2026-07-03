@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-lg font-semibold">LinkedIn Session</h1>
+    <p class="text-xs text-gray-400 mt-0.5">Track every action — hard stops before LinkedIn flags you</p>
+  </div>
+  <div class="flex items-center gap-3">
+    <div id="session-clock" class="mono text-xs text-gray-400 bg-white border border-gray-200 px-3 py-1.5 rounded-lg"></div>
+    <button onclick="resetDay()" class="text-xs px-3 py-1.5 border border-red-200 text-red-500 rounded-lg hover:bg-red-50">Reset today</button>
+  </div>
+</div>
+
+<!-- Health bar -->
+<div class="bg-white border border-gray-100 rounded-xl p-4 mb-5">
+  <div class="flex items-center justify-between mb-2">
+    <span class="text-xs font-semibold text-gray-700">Session health</span>
+    <span id="health-label" class="text-xs font-semibold text-green-600">Safe to continue</span>
+  </div>
+  <div class="w-full bg-gray-100 rounded-full h-2">
+    <div id="health-fill" class="h-2 rounded-full bg-green-500 transition-all duration-500" style="width:0%"></div>
+  </div>
+  <div class="flex text-xs text-gray-400 mt-2">
+    <span>0% fresh</span>
+    <span class="mx-auto">80% slow down</span>
+    <span>100% stop</span>
+  </div>
+</div>
+
+<!-- Counters grid -->
+<div class="grid grid-cols-3 gap-4 mb-5">
+
+{% set meta = {
+  'like':    ('Likes',         'Like',         '30-50',  'indigo', 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z'),
+  'comment': ('Comments',      'Comment',      '10-15',  'violet', 'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z'),
+  'connect': ('Connections',   'Connection',   '15-20',  'blue',   'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z'),
+  'dm':      ('DMs',           'DM',           '25-35',  'sky',    'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z'),
+  'view':    ('Profile Views', 'Profile View', '50-70',  'teal',   'M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z'),
+  'voice':   ('Voice Notes',   'Voice Note',   '10-20',  'purple', 'M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z'),
+} %}
+
+{% for action, lim in limits.items() %}
+{% if action in meta %}
+{% set label_pl = meta[action][0] %}
+{% set label_sg = meta[action][1] %}
+{% set rec      = meta[action][2] %}
+{% set color    = meta[action][3] %}
+{% set icon     = meta[action][4] %}
+{% set cur = counts.get(action, 0) %}
+{% set pct = [(cur / lim.limit * 100)|int, 100]|min %}
+
+<div id="card-{{ action }}" data-action="{{ action }}" data-limit="{{ lim.limit }}" data-count="{{ cur }}"
+  class="bg-white rounded-2xl p-5 border transition-all {{ 'border-red-400' if pct >= 100 else 'border-amber-300' if pct >= 80 else 'border-gray-200' }}">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 rounded-xl bg-{{ color }}-50 flex items-center justify-center flex-shrink-0">
+        <svg class="w-4 h-4 text-{{ color }}-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="{{ icon }}"/>
+        </svg>
+      </div>
+      <div>
+        <div class="text-xs font-semibold text-gray-800">{{ label_pl }}</div>
+        <div class="text-xs text-gray-400">target {{ rec }}/day</div>
+      </div>
+    </div>
+    <span id="badge-{{ action }}" class="text-xs px-2 py-0.5 rounded-full font-semibold
+      {{ 'bg-red-100 text-red-700' if pct >= 100 else 'bg-amber-100 text-amber-700' if pct >= 80 else 'bg-gray-100 text-gray-500' }}">
+      {{ 'STOP' if pct >= 100 else 'SLOW' if pct >= 80 else 'SAFE' }}
+    </span>
+  </div>
+
+  <!-- Big number -->
+  <div class="text-center my-3">
+    <div id="count-{{ action }}"
+      class="text-6xl font-bold mono leading-none {{ 'text-red-600' if pct >= 100 else 'text-amber-600' if pct >= 80 else 'text-gray-900' }}">
+      {{ cur }}
+    </div>
+    <div class="text-xs text-gray-400 mt-1">of {{ lim.limit }}</div>
+  </div>
+
+  <!-- Progress bar -->
+  <div class="w-full bg-gray-100 rounded-full h-2.5 mb-4">
+    <div id="bar-{{ action }}" class="h-2.5 rounded-full transition-all duration-300
+      {{ 'bg-red-500' if pct >= 100 else 'bg-amber-400' if pct >= 80 else 'bg-' ~ color ~ '-500' }}"
+      style="width:{{ pct }}%"></div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="flex gap-2">
+    <button onclick="inc('{{ action }}', -1)"
+      class="w-10 h-10 rounded-xl border border-gray-200 text-gray-600 text-xl font-bold hover:bg-gray-50 flex items-center justify-center flex-shrink-0">
+      −
+    </button>
+    <button id="plus-{{ action }}" onclick="inc('{{ action }}', 1)"
+      {% if pct >= 100 %}disabled{% endif %}
+      class="flex-1 h-10 rounded-xl text-white text-sm font-semibold flex items-center justify-center transition-colors
+      {{ 'bg-red-400 opacity-60 cursor-not-allowed' if pct >= 100 else 'bg-' ~ color ~ '-600 hover:bg-' ~ color ~ '-700' }}">
+      {% if pct >= 100 %}LIMIT REACHED{% else %}+ 1 {{ label_sg }}{% endif %}
+    </button>
+  </div>
+
+  {% if pct >= 100 %}
+  <p class="text-xs text-red-600 text-center mt-2 font-medium">Done for today. Resume tomorrow.</p>
+  {% elif pct >= 80 %}
+  <p class="text-xs text-amber-600 text-center mt-2 font-medium">{{ lim.limit - cur }} left — wrap up</p>
+  {% endif %}
+</div>
+{% endif %}
+{% endfor %}
+
+</div>
+
+<!-- Tips strip -->
+<div class="bg-white border border-gray-100 rounded-xl px-5 py-4 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-gray-500">
+  <span class="font-semibold text-gray-600 shrink-0">Rules:</span>
+  <span>2-3 min between profile visits</span>
+  <span>·</span>
+  <span>Max 5 connections/hour</span>
+  <span>·</span>
+  <span>Stop if CAPTCHA appears</span>
+  <span>·</span>
+  <span class="text-red-500 font-medium">Keep pending connections &lt; 150</span>
+  <a href="/linkedin" class="ml-auto text-indigo-600 hover:underline">Open pipeline</a>
+</div>
+
+<div class="mt-3 text-xs text-gray-400 text-center space-x-3">
+  <span>Shortcuts:</span>
+  <span class="mono bg-gray-100 px-1.5 py-0.5 rounded">L</span> like
+  <span class="mono bg-gray-100 px-1.5 py-0.5 rounded">C</span> comment
+  <span class="mono bg-gray-100 px-1.5 py-0.5 rounded">N</span> connect
+  <span class="mono bg-gray-100 px-1.5 py-0.5 rounded">D</span> dm
+  <span class="mono bg-gray-100 px-1.5 py-0.5 rounded">V</span> view
+  <span class="mono bg-gray-100 px-1.5 py-0.5 rounded">S</span> voice
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const LIMITS = {{ limits | tojson }};
+const LIMIT_NUM = {};
+for (const [k, v] of Object.entries(LIMITS)) LIMIT_NUM[k] = v.limit;
+
+const COLOR_BAR = {
+  like:'bg-indigo-500', comment:'bg-violet-500', connect:'bg-blue-500',
+  dm:'bg-sky-500', view:'bg-teal-500', voice:'bg-purple-500'
+};
+const COLOR_BTN = {
+  like:'bg-indigo-600 hover:bg-indigo-700', comment:'bg-violet-600 hover:bg-violet-700',
+  connect:'bg-blue-600 hover:bg-blue-700', dm:'bg-sky-600 hover:bg-sky-700',
+  view:'bg-teal-600 hover:bg-teal-700', voice:'bg-purple-600 hover:bg-purple-700'
+};
+const LABEL_SG = {
+  like:'Like', comment:'Comment', connect:'Connection',
+  dm:'DM', view:'Profile View', voice:'Voice Note'
+};
+
+function getCounts() {
+  const out = {};
+  document.querySelectorAll('[data-action]').forEach(el => {
+    out[el.dataset.action] = parseInt(el.dataset.count || 0);
+  });
+  return out;
+}
+
+function updateHealthBar() {
+  const counts = getCounts();
+  let sum = 0, n = 0;
+  for (const [a, lim] of Object.entries(LIMIT_NUM)) {
+    sum += Math.min((counts[a] || 0) / lim, 1);
+    n++;
+  }
+  const pct = n ? Math.round(sum / n * 100) : 0;
+  const fill  = document.getElementById('health-fill');
+  const label = document.getElementById('health-label');
+  if (fill) {
+    const cls = pct >= 100 ? 'bg-red-600' : pct >= 80 ? 'bg-amber-500' : pct >= 50 ? 'bg-yellow-400' : 'bg-green-500';
+    fill.style.width = pct + '%';
+    fill.className = `h-2 rounded-full transition-all duration-500 ${cls}`;
+  }
+  if (label) {
+    const [txt, cls] =
+      pct >= 100 ? ['All limits hit — stop now',       'text-red-600']
+    : pct >= 80  ? ['Approaching limits — slow down',  'text-amber-600']
+    : pct >= 50  ? ['Going well — stay paced',         'text-yellow-600']
+    :              ['Safe to continue',                 'text-green-600'];
+    label.textContent = txt;
+    label.className = `text-xs font-semibold ${cls}`;
+  }
+}
+
+async function inc(action, delta) {
+  const card = document.querySelector(`[data-action="${action}"]`);
+  const cur  = parseInt(card?.dataset.count || 0);
+  if (delta > 0 && cur >= LIMIT_NUM[action]) return;
+
+  const res  = await fetch('/api/session/inc', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({action, delta})
+  });
+  const data = await res.json();
+  if (!data.ok) return;
+
+  const n   = data.count;
+  const lim = LIMIT_NUM[action];
+  const pct = Math.min(Math.round(n / lim * 100), 100);
+
+  if (card) card.dataset.count = n;
+
+  const countEl = document.getElementById(`count-${action}`);
+  if (countEl) {
+    countEl.textContent = n;
+    countEl.className = `text-6xl font-bold mono leading-none ${pct >= 100 ? 'text-red-600' : pct >= 80 ? 'text-amber-600' : 'text-gray-900'}`;
+    if (delta > 0) {
+      countEl.style.transform = 'scale(1.25)';
+      setTimeout(() => { countEl.style.transform = 'scale(1)'; }, 150);
+    }
+  }
+
+  const barEl = document.getElementById(`bar-${action}`);
+  if (barEl) {
+    barEl.style.width = pct + '%';
+    const bc = pct >= 100 ? 'bg-red-500' : pct >= 80 ? 'bg-amber-400' : COLOR_BAR[action];
+    barEl.className = `h-2.5 rounded-full transition-all duration-300 ${bc}`;
+  }
+
+  const badgeEl = document.getElementById(`badge-${action}`);
+  if (badgeEl) {
+    const [txt, cls] =
+      pct >= 100 ? ['STOP', 'bg-red-100 text-red-700']
+    : pct >= 80  ? ['SLOW', 'bg-amber-100 text-amber-700']
+    :              ['SAFE', 'bg-gray-100 text-gray-500'];
+    badgeEl.textContent = txt;
+    badgeEl.className = `text-xs px-2 py-0.5 rounded-full font-semibold ${cls}`;
+  }
+
+  const plusEl = document.getElementById(`plus-${action}`);
+  if (plusEl) {
+    if (pct >= 100) {
+      plusEl.disabled = true;
+      plusEl.textContent = 'LIMIT REACHED';
+      plusEl.className = 'flex-1 h-10 rounded-xl text-white text-sm font-semibold flex items-center justify-center transition-colors bg-red-400 opacity-60 cursor-not-allowed';
+    } else {
+      plusEl.disabled = false;
+      plusEl.textContent = `+ 1 ${LABEL_SG[action]}`;
+      plusEl.className = `flex-1 h-10 rounded-xl text-white text-sm font-semibold flex items-center justify-center transition-colors ${COLOR_BTN[action]}`;
+    }
+  }
+
+  if (card) {
+    const bc = pct >= 100 ? 'border-red-400' : pct >= 80 ? 'border-amber-300' : 'border-gray-200';
+    card.className = card.className.replace(/border-(?:red|amber|gray)-\d+/g, bc);
+  }
+
+  updateHealthBar();
+}
+
+async function resetDay() {
+  if (!confirm("Reset all today's counts to zero?")) return;
+  await fetch('/api/session/reset', {method:'POST', headers:{'Content-Type':'application/json'}});
+  location.reload();
+}
+
+function updateClock() {
+  const el = document.getElementById('session-clock');
+  if (!el) return;
+  const off = new Date().getTimezoneOffset() * 60000;
+  const now = Date.now();
+  const ist = new Date(now + off + 5.5 * 3600000);
+  const ct  = new Date(now + off - 5   * 3600000);
+  const fmt = d => {
+    let h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${ap}`;
+  };
+  el.textContent = `${fmt(ist)} IST · ${fmt(ct)} CT`;
+}
+updateClock();
+setInterval(updateClock, 30000);
+updateHealthBar();
+
+document.addEventListener('keydown', e => {
+  if (['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) return;
+  const map = {l:'like', c:'comment', n:'connect', d:'dm', v:'view', s:'voice'};
+  const a = map[e.key.toLowerCase()];
+  if (a) inc(a, 1);
+});
+</script>
+{% endblock %}

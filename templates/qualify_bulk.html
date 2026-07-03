@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center gap-3 mb-4">
+  <a href="/qualify" class="text-xs text-gray-400 hover:text-gray-700">← Qualifier</a>
+  <h1 class="text-lg font-medium">Bulk Qualify</h1>
+  <span class="mono text-xs text-gray-400">{{ leads|length }} unscored leads</span>
+</div>
+
+{% if not leads %}
+<div class="bg-white rounded-xl border border-gray-100 p-12 text-center">
+  <div class="text-gray-400 text-sm">All leads have been scored 🎉</div>
+  <a href="/leads/add" class="text-blue-600 text-xs mt-2 block hover:underline">Import more from Apollo →</a>
+</div>
+{% else %}
+<div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 text-xs text-blue-800 mb-4">
+  These {{ leads|length }} leads have no score yet. Set a score for each and save, or skip ones that don't qualify.
+</div>
+<div class="space-y-3">
+{% for lead in leads %}
+<div class="bg-white rounded-xl border border-gray-100 p-4" id="lead-row-{{ lead.id }}">
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex-1">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="font-medium text-sm">{{ lead.name }}</span>
+        <span class="text-xs px-2 py-0.5 rounded-full niche-{{ lead.niche }}">{{ lead.niche }}</span>
+        <span class="text-xs text-gray-400">{{ lead.source }}</span>
+      </div>
+      <div class="text-xs text-gray-500 mb-2">{{ lead.company or '—' }} {% if lead.email %}· {{ lead.email }}{% endif %}</div>
+      {% if lead.linkedin_url %}<a href="{{ lead.linkedin_url }}" target="_blank" class="text-xs text-blue-600 hover:underline mr-3">LinkedIn ↗</a>{% endif %}
+      {% if lead.instagram_url %}<a href="https://instagram.com/{{ lead.instagram_url.replace('@','') }}" target="_blank" class="text-xs text-pink-600 hover:underline">Instagram ↗</a>{% endif %}
+      {% if lead.notes %}<div class="text-xs text-gray-400 mt-1 truncate">{{ lead.notes[:80] }}</div>{% endif %}
+    </div>
+    <div class="flex items-center gap-2 flex-shrink-0">
+      <div class="flex items-center gap-1">
+        <span class="text-xs text-gray-400">Score:</span>
+        <input type="number" min="0" max="13" value="0" id="score-{{ lead.id }}"
+          class="w-14 border border-gray-200 rounded px-2 py-1 text-sm mono text-center focus:outline-none focus:border-blue-400"
+          onchange="updateScoreVisual({{ lead.id }}, this.value)">
+        <span class="text-xs text-gray-400">/13</span>
+      </div>
+      <button onclick="saveScore({{ lead.id }})" class="text-xs px-3 py-1.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700">Save</button>
+      <button onclick="skipLead({{ lead.id }})" class="text-xs px-3 py-1.5 border border-gray-200 text-gray-500 rounded-lg hover:bg-gray-50">Skip</button>
+    </div>
+  </div>
+  <!-- Quick scoring shortcuts -->
+  <div class="flex gap-1.5 mt-3 pt-3 border-t border-gray-50">
+    <span class="text-xs text-gray-400 mr-1">Quick:</span>
+    {% for val, label, color in [(10,'High (10)','green'),(7,'Medium (7)','yellow'),(3,'Low (3)','red')] %}
+    <button onclick="document.getElementById('score-{{ lead.id }}').value={{ val }}; updateScoreVisual({{ lead.id }}, {{ val }})"
+      class="text-xs px-2 py-0.5 rounded border {{ 'border-green-200 text-green-700 hover:bg-green-50' if color=='green' else 'border-yellow-200 text-yellow-700 hover:bg-yellow-50' if color=='yellow' else 'border-red-200 text-red-700 hover:bg-red-50' }}">{{ label }}</button>
+    {% endfor %}
+  </div>
+  <div id="save-msg-{{ lead.id }}" class="text-xs mt-2 hidden"></div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+<script>
+function updateScoreVisual(id, val) {
+  val = parseInt(val);
+}
+function saveScore(id) {
+  const score = document.getElementById('score-' + id).value;
+  fetch('/leads/' + id + '/score', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+    body: 'score=' + score
+  }).then(r => r.json()).then(d => {
+    const msg = document.getElementById('save-msg-' + id);
+    const row = document.getElementById('lead-row-' + id);
+    if (d.ok) {
+      msg.className = 'text-xs mt-2 text-green-600';
+      msg.textContent = '✓ Score saved';
+      msg.classList.remove('hidden');
+      setTimeout(() => { row.style.opacity = '0.4'; }, 800);
+    }
+  });
+}
+function skipLead(id) {
+  document.getElementById('lead-row-' + id).style.display = 'none';
+}
+</script>
+{% endblock %}

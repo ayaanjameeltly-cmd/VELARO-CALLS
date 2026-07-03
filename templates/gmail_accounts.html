@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Velaro Gmail Sender — Accounts</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>* { font-family: 'Inter', sans-serif; } .mono { font-family: 'JetBrains Mono', monospace; }</style>
+</head>
+<body class="bg-gray-50 text-gray-900 text-sm">
+<div class="max-w-5xl mx-auto p-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <div class="flex items-center gap-2 mb-0.5">
+        <span class="mono text-sm font-medium">VELARO</span>
+        <span class="mono text-xs text-gray-400">Gmail Sender</span>
+      </div>
+      <p class="text-xs text-gray-500">Manage Gmail accounts + warm-up tracker</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <a href="/status" class="text-xs text-gray-400 hover:text-gray-700">Status</a>
+      <a href="/sequences" class="text-xs text-gray-400 hover:text-gray-700">Sequences</a>
+      <a href="/sent" class="text-xs text-gray-400 hover:text-gray-700">Sent</a>
+      <button onclick="restartCampaign()"
+        class="px-3 py-2 border border-red-200 text-red-600 rounded-xl text-xs font-medium hover:bg-red-50 transition-colors">
+        Restart Campaign
+      </button>
+      {% if accounts %}
+      <a href="/compose" class="px-4 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium hover:bg-gray-700 transition-colors">
+        Compose & Send →
+      </a>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Campaign stats bar -->
+  <div id="campaign-stats" class="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 mb-5 text-xs flex items-center gap-5 flex-wrap">
+    <span class="text-gray-500 font-medium">Current campaign:</span>
+    <span id="stat-active" class="text-blue-700 font-semibold">— active</span>
+    <span id="stat-paused" class="text-amber-600 font-semibold">— paused</span>
+    <span id="stat-replied" class="text-green-600 font-semibold">— replied</span>
+    <span id="stat-archived" class="text-gray-400">— archived</span>
+    <span id="stat-warmup" class="ml-auto text-red-500 font-semibold hidden">⚠️ — account(s) blocked (warm-up)</span>
+    <button onclick="loadCampaignStats()" class="text-gray-400 hover:text-gray-600 ml-2">↻</button>
+  </div>
+
+  {% if error %}
+  <div class="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-5">{{ error }}</div>
+  {% endif %}
+
+  <div class="grid grid-cols-3 gap-5">
+
+    <!-- Accounts list -->
+    <div class="col-span-2">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-sm font-semibold">Gmail Accounts</h2>
+        <span class="text-xs text-gray-400">{{ accounts|length }} account{{ 's' if accounts|length != 1 }}</span>
+      </div>
+
+      {% if not accounts %}
+      <div class="bg-white rounded-xl border border-dashed border-gray-200 p-10 text-center text-gray-400">
+        <div class="text-2xl mb-2">✉</div>
+        <div class="text-sm font-medium mb-1">No accounts added yet</div>
+        <div class="text-xs">Add your first Gmail account using the form →</div>
+      </div>
+      {% else %}
+      <div class="space-y-3">
+        {% for acc in accounts %}
+        <div class="bg-white rounded-xl border border-gray-100 p-4">
+          <div class="flex items-start justify-between gap-4 mb-3">
+            <div>
+              <div class="font-medium text-sm">{{ acc.email }}</div>
+              <div class="text-xs text-gray-400 mt-0.5">
+              From: <em>{{ acc.from_name }}</em> ·
+              {% if acc.acct_age_days >= 365 %}1+ yr old{% elif acc.acct_age_days >= 90 %}{{ (acc.acct_age_days // 30) }}mo old{% else %}{{ acc.acct_age_days }}d old{% endif %} ·
+              Cold outreach: Day {{ acc.days }}
+            </div>
+            </div>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <span class="text-xs px-2.5 py-1 rounded-full
+                {% if acc.days < 7 %}bg-red-50 text-red-600
+                {% elif acc.days < 21 %}bg-amber-50 text-amber-700
+                {% elif acc.days < 35 %}bg-blue-50 text-blue-700
+                {% else %}bg-green-50 text-green-700{% endif %}">
+                {{ acc.label }}
+              </span>
+              <form method="post" action="/accounts/delete/{{ acc.email }}" onsubmit="return confirm('Remove this account?')">
+                <button class="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded border border-transparent hover:border-red-200">Remove</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Warm-up block warning -->
+          {% if acc.days < 14 %}
+          <div class="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-red-500 flex-shrink-0"></div>
+              <div class="text-xs text-red-700">
+                <strong>Cold sequences BLOCKED</strong> — only send to friendly contacts.
+              </div>
+            </div>
+            <div class="text-xs font-semibold text-red-600 flex-shrink-0 mono">
+              {{ 14 - acc.days }}d until cold unlock
+            </div>
+          </div>
+          {% elif acc.days < 35 %}
+          <div class="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></div>
+              <div class="text-xs text-amber-700">
+                <strong>Ramping</strong> — mix warm + cold. Max {{ acc.limit }}/day.
+              </div>
+            </div>
+            <div class="text-xs font-semibold text-amber-600 flex-shrink-0 mono">
+              {{ 35 - acc.days }}d to full speed
+            </div>
+          </div>
+          {% else %}
+          <div class="bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-3 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <div class="w-2 h-2 rounded-full bg-green-500 flex-shrink-0"></div>
+              <div class="text-xs text-green-700">
+                <strong>Fully warmed</strong> — cold outreach enabled. {{ acc.limit }}/day max.
+              </div>
+            </div>
+            <div class="text-xs font-semibold text-green-600 flex-shrink-0">
+              READY ✓
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Warm-up progress bar -->
+          <div class="mb-3">
+            <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+              <span>Warm-up progress</span>
+              <span class="mono">Day {{ acc.days }} / 35</span>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2">
+              <div class="h-2 rounded-full transition-all
+                {% if acc.days < 7 %}bg-red-400
+                {% elif acc.days < 21 %}bg-amber-400
+                {% elif acc.days < 35 %}bg-blue-500
+                {% else %}bg-green-500{% endif %}"
+                style="width: {{ acc.pct }}%"></div>
+            </div>
+          </div>
+
+          <!-- Today's stats -->
+          <div class="grid grid-cols-4 gap-3">
+            <div class="bg-gray-50 rounded-lg px-3 py-2 text-center">
+              <div class="mono text-lg font-semibold text-gray-800">{{ acc.sent_today }}</div>
+              <div class="text-xs text-gray-400">Sent today</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg px-3 py-2 text-center">
+              <div class="mono text-lg font-semibold text-green-600">{{ acc.remaining }}</div>
+              <div class="text-xs text-gray-400">Remaining</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg px-3 py-2 text-center">
+              <div class="mono text-lg font-semibold text-blue-600">{{ acc.limit }}</div>
+              <div class="text-xs text-gray-400">Total limit</div>
+            </div>
+            <div class="bg-gray-50 rounded-lg px-3 py-2 text-center border border-dashed {% if acc.cold_limit == 0 %}border-red-200{% else %}border-amber-200{% endif %}">
+              <div class="mono text-lg font-semibold {% if acc.cold_limit == 0 %}text-red-500{% else %}text-amber-600{% endif %}">
+                {% if acc.cold_limit == 0 %}0{% else %}{{ acc.cold_limit }}{% endif %}
+              </div>
+              <div class="text-xs text-gray-400">Cold max</div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Warm-up schedule reference -->
+      <div class="mt-5 bg-white rounded-xl border border-gray-100 p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div class="text-xs font-semibold text-gray-600">Warm-up Schedule</div>
+          <div class="flex items-center gap-3 text-xs text-gray-400">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>Total/day</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>Cold PI max</span>
+          </div>
+        </div>
+        <div class="space-y-1.5">
+          {% for days, limit, cold_limit, label in schedule %}
+          <div class="flex items-center justify-between text-xs py-1.5 px-3 rounded-lg bg-gray-50">
+            <span class="text-gray-600 font-medium">{{ label }}</span>
+            <div class="flex items-center gap-3">
+              <span class="mono font-semibold text-blue-600">{{ limit }}/day</span>
+              <span class="text-gray-300">·</span>
+              {% if cold_limit == 0 %}
+              <span class="text-red-500 font-medium">no cold</span>
+              {% else %}
+              <span class="mono font-semibold text-amber-600">{{ cold_limit }} cold</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-400 leading-relaxed">
+          Want <strong class="text-gray-600">90 cold/day?</strong> Use 3 accounts × 30 cold each — much safer than pushing one account.
+        </div>
+      </div>
+    </div>
+
+    <!-- Add account form -->
+    <div class="col-span-1">
+      <div class="bg-white rounded-xl border border-gray-100 p-4 sticky top-4">
+        <div class="text-xs font-semibold text-gray-600 mb-4">Add Gmail Account</div>
+        <form method="post" action="/accounts/add" class="space-y-3">
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">Gmail address</label>
+            <input type="email" name="email" required placeholder="you@gmail.com"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400">
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">App Password</label>
+            <input type="password" name="password" required placeholder="xxxx xxxx xxxx xxxx"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm mono focus:outline-none focus:ring-1 focus:ring-blue-400">
+            <p class="text-xs text-gray-400 mt-1">myaccount.google.com → Security → App passwords</p>
+          </div>
+          <div>
+            <label class="text-xs text-gray-400 block mb-1">From name</label>
+            <input type="text" name="from_name" value="AJ from Velaro"
+              class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-400">
+          </div>
+          <!-- Q1: Account age (Gmail reputation) -->
+          <div>
+            <label class="text-xs text-gray-500 font-medium block mb-1">How old is this Gmail account?</label>
+            <p class="text-xs text-gray-400 mb-1.5">Older accounts have better base reputation with Google.</p>
+            <input type="hidden" name="added_date" id="added_date" value="{{ today }}">
+            <div class="grid grid-cols-3 gap-1.5">
+              {% set acct_age_opts = [
+                ('anew',    'Brand new',   0,   'bg-red-50 border-red-200 text-red-700'),
+                ('a3mo',    '~3 months',   90,  'bg-amber-50 border-amber-200 text-amber-700'),
+                ('a1yr',    '1+ year',     365, 'bg-green-50 border-green-200 text-green-700'),
+              ] %}
+              {% for val, lbl, days, colors in acct_age_opts %}
+              <label class="acct-chip flex items-center justify-center text-center px-2 py-2 rounded-lg border cursor-pointer transition-all {{ colors }} opacity-60 hover:opacity-100"
+                     data-days="{{ days }}">
+                <input type="radio" name="_acct_age" value="{{ val }}" class="sr-only" {% if val=='a1yr' %}checked{% endif %}
+                       onchange="setAcctAge({{ days }}, this.closest('.acct-chip'))">
+                <span class="text-xs font-medium">{{ lbl }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- Q2: Cold email experience (warm-up limits) -->
+          <div>
+            <label class="text-xs text-gray-500 font-medium block mb-1">Cold outreach experience on this account?</label>
+            <p class="text-xs text-gray-400 mb-1.5">This controls your warm-up limits — separate from account age.</p>
+            <input type="hidden" name="cold_start_date" id="cold_start_date" value="{{ today }}">
+            <div class="grid grid-cols-2 gap-1.5">
+              {% set cold_opts = [
+                ('cnew',    'Never sent cold',  0,   'bg-red-50 border-red-300 text-red-700',    '0 cold/day'),
+                ('c2wk',    '~2 weeks',         14,  'bg-amber-50 border-amber-200 text-amber-700', '0 cold/day'),
+                ('c1mo',    '~1 month',         30,  'bg-yellow-50 border-yellow-200 text-yellow-700','10 cold/day'),
+                ('c3mo',    '3+ months',        90,  'bg-blue-50 border-blue-200 text-blue-700',  '30 cold/day'),
+                ('c6mo',    '6+ months',        180, 'bg-green-50 border-green-200 text-green-700','40 cold/day'),
+              ] %}
+              {% for val, lbl, days, colors, limit_hint in cold_opts %}
+              <label class="cold-chip flex items-center gap-2 px-2.5 py-2 rounded-lg border cursor-pointer transition-all {{ colors }} opacity-60 hover:opacity-100">
+                <input type="radio" name="_cold_exp" value="{{ val }}" class="sr-only" {% if val=='cnew' %}checked{% endif %}
+                       onchange="setColdStart({{ days }}, this.closest('.cold-chip'))">
+                <span class="text-xs font-medium flex-1">{{ lbl }}</span>
+                <span class="text-xs opacity-60">{{ limit_hint }}</span>
+              </label>
+              {% endfor %}
+            </div>
+            <p class="text-xs text-gray-400 mt-1.5">If in doubt, pick "Never sent cold" — safer to under-claim.</p>
+          </div>
+          <button type="submit" class="w-full bg-gray-900 text-white py-2.5 rounded-xl text-sm font-medium hover:bg-gray-700 transition-colors">
+            Add & Test Connection
+          </button>
+        </form>
+
+        <div class="mt-5 pt-4 border-t border-gray-100">
+          <div class="text-xs font-semibold text-amber-800 mb-2">Should I warm up first?</div>
+          <div class="text-xs text-amber-700 space-y-1.5">
+            <p><strong>Yes — absolutely.</strong> New Gmail accounts flagged for cold outreach get banned fast.</p>
+            <p>Week 1–2: only send to people you know (friends, personal contacts). No cold emails.</p>
+            <p>Week 3: start mixing in PI leads slowly (15–20/day).</p>
+            <p>Week 4+: ramp up following the schedule.</p>
+            <p>The system enforces daily limits automatically based on account age.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<script>
+async function restartCampaign() {
+  const res = await fetch('/campaign/stats');
+  const s = await res.json();
+  const msg = `Restart Campaign?\n\nThis will archive all ${s.active} active + ${s.paused} paused sequences.\nReplied leads (${s.replied}) are preserved.\n\nYour Gmail accounts stay. Add up to 3 accounts for the next campaign.\n\nThis cannot be undone.`;
+  if (!confirm(msg)) return;
+  const r2 = await fetch('/campaign/restart', {method:'POST'});
+  const d2 = await r2.json();
+  if (d2.ok) {
+    alert(`Done. ${d2.archived} sequences archived.\n\nYou're ready for the next campaign. Add new Gmail accounts below and wait 14 days before cold outreach.`);
+    loadCampaignStats();
+  }
+}
+
+async function loadCampaignStats() {
+  try {
+    const d = await (await fetch('/campaign/stats')).json();
+    document.getElementById('stat-active').textContent  = d.active + ' active';
+    document.getElementById('stat-paused').textContent  = d.paused + ' paused';
+    document.getElementById('stat-replied').textContent = d.replied + ' replied';
+    document.getElementById('stat-archived').textContent = d.archived + ' archived';
+    const warnEl = document.getElementById('stat-warmup');
+    if (d.warmup_blocked > 0) {
+      warnEl.textContent = `⚠️ ${d.warmup_blocked} account(s) blocked — cold sends skipped (warm-up < 14 days)`;
+      warnEl.classList.remove('hidden');
+    } else {
+      warnEl.classList.add('hidden');
+    }
+  } catch(e) {}
+}
+
+function setAcctAge(days, chipEl) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  document.getElementById('added_date').value = d.toISOString().split('T')[0];
+  document.querySelectorAll('.acct-chip').forEach(c => { c.classList.add('opacity-60'); c.classList.remove('opacity-100','ring-2','ring-offset-1','ring-gray-400'); });
+  chipEl.classList.remove('opacity-60');
+  chipEl.classList.add('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-400');
+}
+
+function setColdStart(days, chipEl) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  document.getElementById('cold_start_date').value = d.toISOString().split('T')[0];
+  document.querySelectorAll('.cold-chip').forEach(c => { c.classList.add('opacity-60'); c.classList.remove('opacity-100','ring-2','ring-offset-1','ring-gray-400'); });
+  chipEl.classList.remove('opacity-60');
+  chipEl.classList.add('opacity-100', 'ring-2', 'ring-offset-1', 'ring-gray-400');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Default: 1+ year account age, never sent cold
+  const acctDefault = document.querySelector('.acct-chip [value="a1yr"]');
+  if (acctDefault) setAcctAge(365, acctDefault.closest('.acct-chip'));
+  const coldDefault = document.querySelector('.cold-chip [value="cnew"]');
+  if (coldDefault) setColdStart(0, coldDefault.closest('.cold-chip'));
+  loadCampaignStats();
+});
+</script>
+
+<!-- Active Job Banner -->
+<div id="job-banner" class="hidden fixed top-0 left-0 right-0 z-50 shadow-lg">
+  <div class="bg-blue-600 text-white px-4 py-2 flex items-center justify-between text-xs">
+    <div class="flex items-center gap-3">
+      <span class="inline-flex gap-1 items-center">
+        <span class="w-2 h-2 rounded-full bg-white animate-ping inline-block"></span>
+        <span class="font-semibold">Sending in progress</span>
+      </span>
+      <span id="jb-counts" class="text-blue-100"></span>
+      <span id="jb-current" class="text-blue-200 truncate max-w-xs hidden sm:block"></span>
+    </div>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <div class="w-32 bg-blue-800 rounded-full h-1.5">
+        <div id="jb-bar" class="h-1.5 rounded-full bg-white transition-all duration-500" style="width:0%"></div>
+      </div>
+      <a href="/compose" class="text-white underline hover:text-blue-100">View →</a>
+      <button id="jb-stop" class="bg-white text-blue-700 font-semibold px-2.5 py-0.5 rounded-lg hover:bg-blue-50">Stop</button>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  let activeJobId = null;
+  const banner = document.getElementById('job-banner');
+  document.getElementById('jb-stop').addEventListener('click', async () => {
+    if (activeJobId) await fetch('/api/stop/' + activeJobId, {method:'POST'});
+  });
+  async function checkJob() {
+    try {
+      const d = await (await fetch('/api/active-job')).json();
+      if (d.active) {
+        activeJobId = d.job_id;
+        banner.classList.remove('hidden');
+        document.body.style.paddingTop = '36px';
+        const pct = d.total > 0 ? Math.round((d.sent + d.failed) / d.total * 100) : 0;
+        document.getElementById('jb-bar').style.width = pct + '%';
+        document.getElementById('jb-counts').textContent = d.sent + '/' + d.total + ' sent' + (d.failed ? ' · ' + d.failed + ' failed' : '') + (d.next_in > 0 ? ' · next in ' + d.next_in + 's' : '');
+        const cur = document.getElementById('jb-current');
+        cur.textContent = d.current ? '→ ' + d.current : '';
+        cur.classList.toggle('hidden', !d.current);
+      } else {
+        banner.classList.add('hidden');
+        document.body.style.paddingTop = '';
+        activeJobId = null;
+      }
+    } catch(e) {}
+  }
+  checkJob();
+  setInterval(checkJob, 2000);
+})();
+</script>
+</body>
+</html>

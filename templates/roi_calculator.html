@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="max-w-3xl mx-auto">
+  <div class="text-center mb-8">
+    <h1 class="text-2xl font-bold text-gray-900">ROI Calculator</h1>
+    <p class="text-sm text-gray-400 mt-1">Move the sliders — results update live</p>
+  </div>
+
+  <div class="bg-white border border-gray-100 rounded-2xl p-8 mb-6 shadow-sm">
+    <div class="space-y-7">
+
+      <div>
+        <div class="flex justify-between mb-2">
+          <label class="text-sm font-medium text-gray-700">Monthly inquiries</label>
+          <span class="text-sm font-bold mono text-gray-900" id="val-inquiries">180</span>
+        </div>
+        <input type="range" min="40" max="400" value="180" step="5" id="s-inquiries"
+          oninput="calc()" class="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-900">
+        <div class="flex justify-between mt-1 text-xs text-gray-400"><span>40</span><span>400</span></div>
+      </div>
+
+      <div>
+        <div class="flex justify-between mb-2">
+          <label class="text-sm font-medium text-gray-700">Current close rate</label>
+          <span class="text-sm font-bold mono text-gray-900" id="val-close-now">12%</span>
+        </div>
+        <input type="range" min="5" max="40" value="12" step="1" id="s-close-now"
+          oninput="calc()" class="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-900">
+        <div class="flex justify-between mt-1 text-xs text-gray-400"><span>5%</span><span>40%</span></div>
+      </div>
+
+      <div>
+        <div class="flex justify-between mb-2">
+          <label class="text-sm font-medium text-gray-700">Close rate with Velaro</label>
+          <span class="text-sm font-bold mono text-indigo-600" id="val-close-after">28%</span>
+        </div>
+        <input type="range" min="10" max="60" value="28" step="1" id="s-close-after"
+          oninput="calc()" class="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-indigo-500">
+        <div class="flex justify-between mt-1 text-xs text-gray-400"><span>10%</span><span>60%</span></div>
+      </div>
+
+      <div>
+        <div class="flex justify-between mb-2">
+          <label class="text-sm font-medium text-gray-700">Average case value</label>
+          <span class="text-sm font-bold mono text-gray-900" id="val-case">$45,000</span>
+        </div>
+        <input type="range" min="10000" max="150000" value="45000" step="1000" id="s-case"
+          oninput="calc()" class="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-900">
+        <div class="flex justify-between mt-1 text-xs text-gray-400"><span>$10k</span><span>$150k</span></div>
+      </div>
+
+      <div>
+        <div class="flex justify-between mb-2">
+          <label class="text-sm font-medium text-gray-700">Velaro monthly fee</label>
+          <span class="text-sm font-bold mono text-gray-900" id="val-fee">$3,500</span>
+        </div>
+        <input type="range" min="2500" max="7000" value="3500" step="100" id="s-fee"
+          oninput="calc()" class="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer accent-gray-900">
+        <div class="flex justify-between mt-1 text-xs text-gray-400"><span>$2,500</span><span>$7,000</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="bg-white border border-gray-100 rounded-2xl p-6 text-center shadow-sm">
+      <div class="text-xs text-gray-400 uppercase tracking-wide mb-3">Extra cases/month</div>
+      <div class="text-4xl font-bold text-gray-900 mono" id="r-cases">29</div>
+      <div class="text-xs text-gray-400 mt-2">additional signed cases</div>
+    </div>
+    <div class="bg-white border border-gray-100 rounded-2xl p-6 text-center shadow-sm">
+      <div class="text-xs text-gray-400 uppercase tracking-wide mb-3">Extra revenue/month</div>
+      <div class="text-4xl font-bold text-indigo-600 mono" id="r-revenue">$1.3M</div>
+      <div class="text-xs text-gray-400 mt-2">before Velaro fee</div>
+    </div>
+    <div class="bg-gray-900 border border-gray-900 rounded-2xl p-6 text-center shadow-sm">
+      <div class="text-xs text-gray-400 uppercase tracking-wide mb-3">Net after Velaro fee</div>
+      <div class="text-4xl font-bold text-green-400 mono" id="r-net">$1.3M</div>
+      <div class="text-xs text-gray-500 mt-2">per month, net</div>
+    </div>
+  </div>
+
+  <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-4 text-center">
+    <p class="text-sm text-indigo-700" id="r-summary">
+      Recovering <strong id="s-extra-cases">29</strong> extra cases/month at $45,000 average = <strong id="s-monthly">$1,305,000</strong> extra revenue. Velaro fee = $3,500. ROI = <strong id="s-roi">373×</strong>.
+    </p>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+function fmt(n) {
+  if (n >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+  if (n >= 1000) return '$' + Math.round(n/1000) + 'k';
+  return '$' + n.toLocaleString();
+}
+function calc() {
+  const inquiries  = +document.getElementById('s-inquiries').value;
+  const closeNow   = +document.getElementById('s-close-now').value / 100;
+  const closeAfter = +document.getElementById('s-close-after').value / 100;
+  const caseVal    = +document.getElementById('s-case').value;
+  const fee        = +document.getElementById('s-fee').value;
+
+  document.getElementById('val-inquiries').textContent   = inquiries;
+  document.getElementById('val-close-now').textContent   = Math.round(closeNow*100)+'%';
+  document.getElementById('val-close-after').textContent = Math.round(closeAfter*100)+'%';
+  document.getElementById('val-case').textContent        = fmt(caseVal);
+  document.getElementById('val-fee').textContent         = fmt(fee);
+
+  const extraCases   = Math.round(inquiries * (closeAfter - closeNow));
+  const extraRevenue = extraCases * caseVal;
+  const net          = extraRevenue - fee;
+  const roi          = fee > 0 ? Math.round(extraRevenue / fee) : 0;
+
+  document.getElementById('r-cases').textContent   = Math.max(0, extraCases);
+  document.getElementById('r-revenue').textContent = fmt(Math.max(0, extraRevenue));
+  document.getElementById('r-net').textContent     = fmt(Math.max(0, net));
+
+  document.getElementById('s-extra-cases').textContent = Math.max(0, extraCases);
+  document.getElementById('s-monthly').textContent     = fmt(Math.max(0, extraRevenue));
+  document.getElementById('s-roi').textContent         = roi + '×';
+}
+calc();
+</script>
+{% endblock %}

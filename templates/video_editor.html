@@ -1,0 +1,416 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="flex items-center justify-between mb-5">
+  <div>
+    <h1 class="text-lg font-semibold">Day 7 Video Recorder</h1>
+    <p class="text-xs text-gray-400 mt-0.5">Personalized Loom walkthrough for each firm — follow the steps while recording</p>
+  </div>
+  <div class="flex items-center gap-2">
+    <button onclick="copyHeyGen()" id="heygen-btn"
+      class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+      Copy HeyGen Script
+    </button>
+    <button onclick="startRecording()" id="start-btn"
+      class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold flex items-center gap-2">
+      <span class="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+      Start Recording Mode
+    </button>
+  </div>
+</div>
+
+<!-- Setup panel -->
+<div class="grid grid-cols-3 gap-4 mb-5">
+  <div class="col-span-2 bg-white border border-gray-200 rounded-xl p-5">
+    <h2 class="text-xs font-semibold text-gray-700 mb-4">Firm details</h2>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">Contact first name</label>
+        <input id="inp-name" oninput="updatePreviews()" type="text" placeholder="e.g. Michael"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">Firm name</label>
+        <input id="inp-firm" oninput="updatePreviews()" type="text" placeholder="e.g. Rodriguez Law Group"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">Firm website</label>
+        <input id="inp-url" oninput="updatePreviews()" type="text" placeholder="e.g. rodriguezlaw.com"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 block mb-1">City / state</label>
+        <input id="inp-city" oninput="updatePreviews()" type="text" placeholder="e.g. Houston, TX"
+          class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-400">
+      </div>
+    </div>
+  </div>
+  <div class="bg-white border border-gray-200 rounded-xl p-5">
+    <h2 class="text-xs font-semibold text-gray-700 mb-4">Quick launch</h2>
+    <div class="space-y-2.5">
+      <button onclick="openWebsite()" class="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:border-indigo-300 text-xs flex items-center gap-2.5">
+        <span class="w-6 h-6 bg-blue-50 rounded-md flex items-center justify-center text-blue-600 flex-shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+        </span>
+        <div>
+          <div class="font-medium text-gray-800">Open firm website</div>
+          <div class="text-gray-400 mt-0.5" id="url-preview">enter URL above</div>
+        </div>
+      </button>
+      <button onclick="openDemo()" class="w-full text-left px-3 py-2.5 rounded-lg border border-gray-200 hover:border-indigo-300 text-xs flex items-center gap-2.5">
+        <span class="w-6 h-6 bg-indigo-50 rounded-md flex items-center justify-center text-indigo-600 flex-shrink-0">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </span>
+        <div>
+          <div class="font-medium text-gray-800">Launch Velaro demo</div>
+          <div class="text-gray-400 mt-0.5" id="demo-preview">localhost:5050/demo</div>
+        </div>
+      </button>
+      <div class="pt-1 border-t border-gray-100">
+        <div class="text-xs text-gray-400 mb-1.5">DM caption (copy after recording)</div>
+        <div id="dm-preview" class="text-xs text-gray-600 bg-gray-50 rounded-lg p-2.5 leading-relaxed min-h-[60px]">
+          Fill in name + firm above
+        </div>
+        <button onclick="copyDM()" class="mt-2 text-xs text-indigo-600 hover:underline">Copy caption</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Step cards -->
+<div class="mb-4">
+  <div class="flex items-center justify-between mb-3">
+    <h2 class="text-xs font-semibold text-gray-700">Recording steps</h2>
+    <span class="text-xs text-gray-400">Click card or press Space to advance</span>
+  </div>
+  <div class="grid grid-cols-5 gap-3" id="steps-grid">
+    <!-- rendered by JS -->
+  </div>
+</div>
+
+<!-- Full video timeline -->
+<div class="bg-white border border-gray-200 rounded-xl p-5 mb-5">
+  <div class="flex items-center justify-between mb-4">
+    <h2 class="text-xs font-semibold text-gray-700">Full video timeline</h2>
+    <span class="text-xs font-mono font-semibold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">~75s total</span>
+  </div>
+  <div class="flex items-stretch gap-1 h-8 rounded-lg overflow-hidden mb-3">
+    <div class="bg-violet-500 flex items-center justify-center text-white text-xs font-bold" style="width:10.7%">8s</div>
+    <div class="bg-blue-400 flex items-center justify-center text-white text-xs font-semibold" style="width:16%">12s</div>
+    <div class="bg-blue-500 flex items-center justify-center text-white text-xs font-semibold" style="width:13.3%">10s</div>
+    <div class="bg-blue-600 flex items-center justify-center text-white text-xs font-semibold" style="width:10.7%">8s</div>
+    <div class="bg-indigo-500 flex items-center justify-center text-white text-xs font-semibold" style="width:26.7%">20s</div>
+    <div class="bg-blue-500 flex items-center justify-center text-white text-xs font-semibold" style="width:13.3%">10s</div>
+    <div class="bg-violet-500 flex items-center justify-center text-white text-xs font-bold" style="width:9.3%">7s</div>
+  </div>
+  <div class="flex items-start gap-1 text-xs" style="font-size:10px">
+    <div class="text-center" style="width:10.7%"><div class="w-2 h-2 bg-violet-500 rounded-full mx-auto mb-1"></div>Face intro</div>
+    <div class="text-center" style="width:16%"><div class="w-2 h-2 bg-blue-400 rounded-full mx-auto mb-1"></div>Website</div>
+    <div class="text-center" style="width:13.3%"><div class="w-2 h-2 bg-blue-500 rounded-full mx-auto mb-1"></div>Form</div>
+    <div class="text-center" style="width:10.7%"><div class="w-2 h-2 bg-blue-600 rounded-full mx-auto mb-1"></div>Gap</div>
+    <div class="text-center" style="width:26.7%"><div class="w-2 h-2 bg-indigo-500 rounded-full mx-auto mb-1"></div>Demo (auto-runs 18s)</div>
+    <div class="text-center" style="width:13.3%"><div class="w-2 h-2 bg-blue-500 rounded-full mx-auto mb-1"></div>Close</div>
+    <div class="text-center" style="width:9.3%"><div class="w-2 h-2 bg-violet-500 rounded-full mx-auto mb-1"></div>Face outro</div>
+  </div>
+  <div class="mt-4 grid grid-cols-3 gap-3 pt-4 border-t border-gray-100">
+    <div class="text-center">
+      <div class="text-xs text-gray-400 mb-0.5">Screen recording</div>
+      <div class="text-sm font-bold text-gray-800 mono">50s</div>
+    </div>
+    <div class="text-center border-x border-gray-100">
+      <div class="text-xs text-gray-400 mb-0.5">Face cam (Loom)</div>
+      <div class="text-sm font-bold text-gray-800 mono">15s</div>
+    </div>
+    <div class="text-center">
+      <div class="text-xs text-gray-400 mb-0.5">Demo auto-completes</div>
+      <div class="text-sm font-bold text-green-600 mono">Yes — 18s</div>
+    </div>
+  </div>
+</div>
+
+<!-- Recording overlay (fullscreen) -->
+<div id="recording-overlay" class="hidden fixed inset-0 bg-gray-950 z-50 flex flex-col">
+
+  <!-- Top bar -->
+  <div class="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+    <div class="flex items-center gap-4">
+      <span class="flex items-center gap-2 text-red-400 text-sm font-semibold">
+        <span class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+        RECORDING
+      </span>
+      <span id="ov-timer" class="mono text-gray-400 text-sm">0:00</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="ov-firm-badge" class="px-3 py-1 bg-indigo-900 text-indigo-200 rounded-full text-xs font-semibold"></span>
+      <button onclick="openWebsite()" class="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-lg text-xs">Open website</button>
+      <button onclick="openDemo()" class="px-3 py-1.5 bg-indigo-700 hover:bg-indigo-600 text-white rounded-lg text-xs">Launch demo</button>
+    </div>
+    <button onclick="stopRecording()" class="px-3 py-1.5 bg-gray-800 hover:bg-red-900 text-gray-400 hover:text-red-300 rounded-lg text-xs">Exit</button>
+  </div>
+
+  <!-- Step progress -->
+  <div class="flex items-center gap-1.5 px-6 py-3 border-b border-gray-800">
+    <!-- rendered by updateOverlay() -->
+    <div id="ov-steps-bar" class="flex items-center gap-1.5 flex-1"></div>
+    <span id="ov-step-counter" class="text-xs text-gray-500 ml-2">Step 1 of 5</span>
+  </div>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col items-center justify-center px-8 text-center">
+    <div id="ov-step-label" class="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-3"></div>
+    <div id="ov-action" class="text-2xl font-bold text-white mb-4 max-w-2xl leading-snug"></div>
+    <div id="ov-say" class="text-base text-gray-300 max-w-2xl leading-relaxed mb-6"></div>
+    <div id="ov-cue" class="text-xs text-indigo-400 font-mono bg-indigo-950 px-4 py-2 rounded-lg"></div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="flex items-center justify-between px-6 py-5 border-t border-gray-800">
+    <button onclick="prevStep()" id="ov-prev" class="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-xl text-sm disabled:opacity-30">
+      Previous
+    </button>
+    <div class="text-xs text-gray-600">Space / click to advance</div>
+    <button onclick="nextStep()" id="ov-next" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-semibold">
+      Next step
+    </button>
+  </div>
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+const STEPS = [
+  {
+    label: 'Website',
+    duration: 12,
+    action: 'Scroll through their homepage',
+    say: 'Hey [NAME] — Ayaan here. I recorded this specifically for [FIRM] — not a template, I actually went through your site this morning. Give me 90 seconds.',
+    cue: '[OPEN HOMEPAGE — SCROLL SLOWLY TOP TO BOTTOM — LET THEM SEE IT]',
+    icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+  },
+  {
+    label: 'Contact Form',
+    duration: 10,
+    action: 'Navigate to their contact form',
+    say: 'This is your contact form right now. Someone fills this out at 10pm — they just got rear-ended, they\'re scared, they want help. Right now that form sits in an inbox until your team checks email tomorrow morning. That person called three other firms the same night.',
+    cue: '[CLICK TO CONTACT PAGE — ZOOM IN ON THE FORM — PAUSE]',
+    icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  },
+  {
+    label: 'The Gap',
+    duration: 8,
+    action: 'Call out the after-hours gap',
+    say: 'The firm that responded first got the case. Not the best firm — the fastest one. That\'s the gap. It\'s not your ads, not your intake team — it\'s the 8-hour window where nobody\'s watching. Here\'s what we built to close it.',
+    cue: '[STAY ON FORM — HOVER CURSOR OVER EMPTY FIELDS]',
+    icon: 'M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  },
+  {
+    label: 'Demo',
+    duration: 20,
+    action: 'Switch to Velaro demo — let it run',
+    say: 'This is [FIRM] with our system running. Same inquiry, 10pm, form submitted — watch what happens.',
+    cue: '[SWITCH TO DEMO TAB — SAY NOTHING — LET THE 18s SIMULATION PLAY OUT]',
+    icon: 'M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
+  },
+  {
+    label: 'Close',
+    duration: 10,
+    action: 'Back to camera — one question',
+    say: 'That\'s it. One question — how many after-hours inquiries do you think come in every week that don\'t get a reply until morning? I\'ll put real numbers on it for [FIRM]. Worth 15 minutes?',
+    cue: '[STOP SHARE — BACK TO FACE CAM — SMILE, SAY NOTHING AFTER]',
+    icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.938-.599.12-.994.556-.994 1.062 0 .608.504 1 1 1 .551 0 1-.449 1-1 0-.219-.029-.432-.082-.636C18.373 14.695 20 12.981 20 11c0-2.761-2.686-5-6-5-2.516 0-4.658 1.374-5.556 3.354A1 1 0 008.228 9zM12 17h.01',
+  },
+];
+
+let currentStep = 0;
+let timerInterval = null;
+let elapsed = 0;
+
+function getFirm() { return document.getElementById('inp-firm').value || '[FIRM]'; }
+function getName() { return document.getElementById('inp-name').value || '[NAME]'; }
+
+function fillVars(str) {
+  return str
+    .replace(/\[FIRM\]/g, getFirm())
+    .replace(/\[NAME\]/g, getName());
+}
+
+function updatePreviews() {
+  const firm = getFirm();
+  const name = getName();
+  const url  = (document.getElementById('inp-url').value || '').trim();
+
+  document.getElementById('url-preview').textContent = url || 'enter URL above';
+  document.getElementById('demo-preview').textContent = `localhost:5001/demo?firm=${encodeURIComponent(firm)}`;
+
+  const dm = `Hey ${name} — made a quick 2-min walkthrough specifically for ${firm}.\n\nShows exactly how your after-hours intake could look with the system live.\n\n[video link]\n\nWorth a watch when you get 2 minutes?`;
+  document.getElementById('dm-preview').textContent = dm;
+
+  renderStepCards();
+  if (document.getElementById('recording-overlay').classList.contains('hidden') === false) {
+    updateOverlay();
+  }
+}
+
+function copyDM() {
+  const txt = document.getElementById('dm-preview').textContent;
+  navigator.clipboard.writeText(txt).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy caption'; }, 2000);
+  });
+}
+
+function renderStepCards() {
+  const grid = document.getElementById('steps-grid');
+  grid.innerHTML = '';
+  STEPS.forEach((step, i) => {
+    const active = i === currentStep;
+    const done   = i < currentStep;
+    const div = document.createElement('div');
+    div.className = `rounded-xl border p-4 cursor-pointer transition-all ${
+      active ? 'border-indigo-400 bg-indigo-50' :
+      done   ? 'border-green-300 bg-green-50'    :
+               'border-gray-200 bg-white hover:border-gray-300'
+    }`;
+    div.onclick = () => { currentStep = i; renderStepCards(); updateOverlay(); };
+    div.innerHTML = `
+      <div class="flex items-center gap-2 mb-2">
+        <span class="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
+          ${active ? 'bg-indigo-600 text-white' : done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}">
+          ${done ? '✓' : i + 1}
+        </span>
+        <span class="text-xs font-semibold ${active ? 'text-indigo-700' : done ? 'text-green-700' : 'text-gray-600'}">${step.label}</span>
+        <span class="ml-auto text-xs font-mono font-semibold px-1.5 py-0.5 rounded ${active ? 'bg-indigo-100 text-indigo-600' : done ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'}">${step.duration}s</span>
+      </div>
+      <div class="text-xs text-gray-500 leading-relaxed">${fillVars(step.action)}</div>
+      <div class="mt-2.5 text-xs text-gray-700 leading-relaxed italic border-l-2 border-indigo-300 pl-2">"${fillVars(step.say)}"</div>
+      <div class="mt-2 text-xs font-mono text-indigo-500 bg-indigo-50 rounded px-2 py-1 leading-tight">${step.cue}</div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function openWebsite() {
+  const url = document.getElementById('inp-url').value.trim();
+  if (!url) { alert('Enter the firm URL first.'); return; }
+  const full = url.startsWith('http') ? url : 'https://' + url;
+  window.open(full, '_blank');
+}
+
+function openDemo() {
+  const firm = getFirm();
+  window.open(`http://localhost:5001/demo?firm=${encodeURIComponent(firm)}`, '_blank');
+}
+
+function startRecording() {
+  currentStep = 0;
+  elapsed = 0;
+  document.getElementById('recording-overlay').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+  updateOverlay();
+  timerInterval = setInterval(() => {
+    elapsed++;
+    const m = Math.floor(elapsed / 60);
+    const s = elapsed % 60;
+    document.getElementById('ov-timer').textContent = `${m}:${String(s).padStart(2,'0')}`;
+  }, 1000);
+}
+
+function stopRecording() {
+  document.getElementById('recording-overlay').classList.add('hidden');
+  document.body.style.overflow = '';
+  clearInterval(timerInterval);
+  timerInterval = null;
+  renderStepCards();
+}
+
+function updateOverlay() {
+  const step = STEPS[currentStep];
+  document.getElementById('ov-firm-badge').textContent = getFirm();
+  document.getElementById('ov-step-label').textContent = `Step ${currentStep + 1} of ${STEPS.length} — ${step.label}`;
+  document.getElementById('ov-action').textContent = fillVars(step.action);
+  document.getElementById('ov-say').textContent = fillVars(step.say);
+  document.getElementById('ov-cue').textContent = step.cue;
+  document.getElementById('ov-step-counter').textContent = `Step ${currentStep + 1} of ${STEPS.length}`;
+  document.getElementById('ov-prev').disabled = currentStep === 0;
+
+  const nextBtn = document.getElementById('ov-next');
+  if (currentStep === STEPS.length - 1) {
+    nextBtn.textContent = 'Finish';
+    nextBtn.onclick = stopRecording;
+  } else {
+    nextBtn.textContent = 'Next step';
+    nextBtn.onclick = nextStep;
+  }
+
+  // Progress bar
+  const bar = document.getElementById('ov-steps-bar');
+  bar.innerHTML = '';
+  STEPS.forEach((s, i) => {
+    const el = document.createElement('div');
+    const pct = i < currentStep ? 'w-full' : i === currentStep ? 'w-1/2' : 'w-0';
+    el.className = 'flex-1 h-1 bg-gray-800 rounded-full overflow-hidden';
+    el.innerHTML = `<div class="h-full rounded-full transition-all duration-300 ${i <= currentStep ? 'bg-indigo-500' : 'bg-gray-700'}" style="width:${i < currentStep ? 100 : i === currentStep ? 50 : 0}%"></div>`;
+    bar.appendChild(el);
+  });
+}
+
+function nextStep() {
+  if (currentStep < STEPS.length - 1) {
+    currentStep++;
+    updateOverlay();
+    renderStepCards();
+  }
+}
+
+function prevStep() {
+  if (currentStep > 0) {
+    currentStep--;
+    updateOverlay();
+    renderStepCards();
+  }
+}
+
+// Keyboard nav in overlay
+document.addEventListener('keydown', e => {
+  const overlay = document.getElementById('recording-overlay');
+  if (overlay.classList.contains('hidden')) return;
+  if (e.key === ' ' || e.key === 'ArrowRight') { e.preventDefault(); nextStep(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prevStep(); }
+  if (e.key === 'Escape') stopRecording();
+});
+
+function copyHeyGen() {
+  const name = getName();
+  const firm = getFirm();
+
+  const script = `Hey ${name} — Ayaan here. I put this together specifically for ${firm} — went through your site this morning.
+
+Quick observation. When someone fills out your contact form at ten pm — right after an accident, scared, looking for help — that form sits in your inbox until morning. Meanwhile they called two other firms. The one that responded first got the case. Not the best firm. The fastest.
+
+That's the gap most PI firms don't see. It's not your ads or your team — it's the eight-hour window where nobody's responding.
+
+We built a system that closes that window. Every inquiry answered in under sixty seconds, automatically, twenty-four seven. Pre-qualified and booked before your team starts the day.
+
+I'd love to show you exactly what this looks like for ${firm}. Worth fifteen minutes this week?`;
+
+  navigator.clipboard.writeText(script).then(() => {
+    const btn = document.getElementById('heygen-btn');
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg> Copied!';
+    btn.classList.replace('bg-emerald-600', 'bg-green-600');
+    btn.classList.replace('hover:bg-emerald-700', 'hover:bg-green-700');
+    setTimeout(() => {
+      btn.innerHTML = orig;
+      btn.classList.replace('bg-green-600', 'bg-emerald-600');
+      btn.classList.replace('hover:bg-green-700', 'hover:bg-emerald-700');
+    }, 2500);
+  });
+}
+
+// Init
+updatePreviews();
+</script>
+{% endblock %}

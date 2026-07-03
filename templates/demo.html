@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ firm }} — AI Intake Live</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { font-family: 'Inter', sans-serif; }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .fade-in { animation: fadeIn 0.4s ease forwards; }
+  .slide-in { animation: slideIn 0.35s ease forwards; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideIn { from { opacity:0; transform:translateX(-10px); } to { opacity:1; transform:translateX(0); } }
+  .pulse-green { animation: pulseGreen 1.5s ease infinite; }
+  @keyframes pulseGreen { 0%,100% { box-shadow:0 0 0 0 rgba(34,197,94,0.4); } 50% { box-shadow:0 0 0 8px rgba(34,197,94,0); } }
+  .glow { box-shadow: 0 0 30px rgba(99,102,241,0.15); }
+  .response-bar { transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+</style>
+</head>
+<body class="bg-gray-950 text-white min-h-screen">
+
+<!-- Header -->
+<div class="border-b border-gray-800 px-8 py-4 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-xs font-bold">V</div>
+    <div>
+      <div class="text-sm font-semibold text-white" id="firm-name">{{ firm }}</div>
+      <div class="text-xs text-gray-500">AI Intake System</div>
+    </div>
+  </div>
+  <div class="flex items-center gap-4">
+    <div id="live-badge" class="flex items-center gap-2 px-3 py-1.5 bg-green-950 border border-green-800 rounded-full">
+      <span class="w-2 h-2 bg-green-500 rounded-full pulse-green"></span>
+      <span class="text-xs font-semibold text-green-400 mono">LIVE</span>
+    </div>
+    <div class="text-xs text-gray-500 mono" id="clock">--:--:-- PM</div>
+  </div>
+</div>
+
+<!-- Main grid -->
+<div class="grid grid-cols-5 gap-0 min-h-[calc(100vh-57px)]">
+
+  <!-- LEFT: Submitted lead form -->
+  <div class="col-span-2 border-r border-gray-800 p-6 flex flex-col">
+    <div class="flex items-center justify-between mb-4">
+      <div class="text-xs font-semibold text-gray-400 uppercase tracking-widest">New Lead</div>
+      <div id="lead-badge" class="hidden px-2 py-1 bg-amber-950 border border-amber-800 rounded text-xs text-amber-400 font-semibold mono">INCOMING</div>
+    </div>
+
+    <div id="lead-card" class="bg-gray-900 border border-gray-800 rounded-xl p-5 opacity-0 transition-all duration-500 glow">
+      <div class="flex items-center gap-3 mb-5 pb-4 border-b border-gray-800">
+        <div class="w-10 h-10 bg-indigo-900 rounded-full flex items-center justify-center text-sm font-bold text-indigo-300">JM</div>
+        <div>
+          <div class="text-sm font-semibold">John Martinez</div>
+          <div class="text-xs text-gray-400">(512) 384-7291</div>
+        </div>
+        <div id="status-pill" class="ml-auto px-2.5 py-1 bg-gray-800 rounded-full text-xs text-gray-400 font-medium">New</div>
+      </div>
+
+      <div class="space-y-3.5">
+        <div>
+          <div class="text-xs text-gray-500 mb-1">Incident type</div>
+          <div class="text-sm text-white font-medium">Motor vehicle accident</div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 mb-1">Date of accident</div>
+          <div class="text-sm text-white">June 19, 2026 — <span class="text-gray-400">10:47 PM</span></div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 mb-1">Description</div>
+          <div class="text-sm text-gray-300 leading-relaxed">"I was rear-ended on I-10 near downtown. Other driver ran a red. Neck and back pain since."</div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <div class="text-xs text-gray-500 mb-1">At-fault party</div>
+            <div class="text-sm text-white">Other driver</div>
+          </div>
+          <div>
+            <div class="text-xs text-gray-500 mb-1">Insurance</div>
+            <div class="text-sm text-white">State Farm</div>
+          </div>
+        </div>
+        <div>
+          <div class="text-xs text-gray-500 mb-1">Found via</div>
+          <div class="text-sm text-white">Google Search</div>
+        </div>
+      </div>
+
+      <div class="mt-5 pt-4 border-t border-gray-800">
+        <div class="text-xs text-gray-500 mb-2">Pre-qualification</div>
+        <div class="space-y-1.5" id="qual-items">
+          <div class="flex items-center gap-2 text-xs text-gray-500">
+            <span id="q1" class="w-4 h-4 rounded-full border border-gray-700 flex-shrink-0"></span>
+            Injury confirmed
+          </div>
+          <div class="flex items-center gap-2 text-xs text-gray-500">
+            <span id="q2" class="w-4 h-4 rounded-full border border-gray-700 flex-shrink-0"></span>
+            3rd party fault
+          </div>
+          <div class="flex items-center gap-2 text-xs text-gray-500">
+            <span id="q3" class="w-4 h-4 rounded-full border border-gray-700 flex-shrink-0"></span>
+            Insurance identified
+          </div>
+          <div class="flex items-center gap-2 text-xs text-gray-500">
+            <span id="q4" class="w-4 h-4 rounded-full border border-gray-700 flex-shrink-0"></span>
+            Within statute of limitations
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SMS preview -->
+    <div id="sms-panel" class="mt-4 opacity-0 transition-all duration-500">
+      <div class="text-xs text-gray-500 mb-2 uppercase tracking-widest font-semibold">SMS Sent to Lead</div>
+      <div class="bg-gray-900 border border-green-900 rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-6 h-6 bg-green-900 rounded-full flex items-center justify-center">
+            <svg class="w-3.5 h-3.5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+          </div>
+          <span class="text-xs text-green-400 font-semibold">Sent</span>
+          <span id="sms-time" class="text-xs text-gray-500 mono ml-auto"></span>
+        </div>
+        <div class="bg-gray-800 rounded-lg p-3 text-sm text-gray-200 leading-relaxed" id="sms-text">
+          Hi John — this is <span id="sms-firm" class="text-white font-medium">{{ firm }}</span>. We received your inquiry about your accident on I-10. An attorney will review your case today. Book your free consultation here: velaro.co/book/martinez — or reply CALL and we'll reach out within the hour.
+        </div>
+        <div class="mt-2 flex items-center gap-1.5">
+          <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <svg class="w-3 h-3 text-green-500 -ml-1.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+          <span class="text-xs text-gray-500 mono">Delivered</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt-auto pt-4">
+      <button onclick="resetDemo()" class="w-full py-2 border border-gray-700 hover:border-gray-600 text-xs text-gray-400 hover:text-gray-300 rounded-lg transition-colors">
+        Run again
+      </button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Response timeline + stats -->
+  <div class="col-span-3 flex flex-col">
+
+    <!-- Response time hero -->
+    <div class="p-6 border-b border-gray-800">
+      <div class="flex items-end justify-between mb-3">
+        <div>
+          <div class="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-1">Response time</div>
+          <div class="text-5xl font-bold mono" id="response-display">
+            <span class="text-gray-700">--</span>
+          </div>
+        </div>
+        <div id="booked-badge" class="hidden px-4 py-2 bg-green-950 border border-green-700 rounded-xl text-green-400 font-bold text-sm mono">
+          CONSULTATION BOOKED ✓
+        </div>
+      </div>
+      <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden mt-3">
+        <div id="progress-bar" class="h-full bg-indigo-500 rounded-full response-bar" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between mt-1.5">
+        <span class="text-xs text-gray-600 mono">0s</span>
+        <span class="text-xs text-gray-600 mono">60s target</span>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div class="flex-1 p-6 overflow-y-auto">
+      <div class="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-4">Activity log</div>
+      <div class="space-y-3" id="timeline">
+        <!-- injected by JS -->
+      </div>
+    </div>
+
+    <!-- Bottom stats bar -->
+    <div id="stats-bar" class="border-t border-gray-800 px-6 py-4 grid grid-cols-4 gap-4 opacity-0 transition-all duration-700">
+      <div>
+        <div class="text-xs text-gray-500 mb-0.5">Response time</div>
+        <div class="text-sm font-bold text-green-400 mono" id="stat-time">—</div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 mb-0.5">Case type</div>
+        <div class="text-sm font-semibold text-white">Motor Vehicle</div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 mb-0.5">Status</div>
+        <div class="text-sm font-bold text-green-400" id="stat-status">Waiting</div>
+      </div>
+      <div>
+        <div class="text-xs text-gray-500 mb-0.5">Attorney notified</div>
+        <div class="text-sm font-semibold text-white" id="stat-attorney">—</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const FIRM = {{ firm | tojson }};
+
+const EVENTS = [
+  { t: 800,  icon: '📥', label: 'Lead received',          detail: 'Contact form submitted — John Martinez',   color: 'indigo' },
+  { t: 2200, icon: '🤖', label: 'AI intake activated',    detail: 'Parsing case details and injury type',      color: 'indigo' },
+  { t: 4500, icon: '✅', label: 'Case pre-screened',      detail: 'Motor vehicle · 3rd party fault · Injury confirmed · Insurance: State Farm', color: 'green', qual: true },
+  { t: 7000, icon: '📱', label: 'SMS dispatched',         detail: 'Text sent to (512) 384-7291',              color: 'green', sms: true },
+  { t: 9500, icon: '📧', label: 'Email confirmation sent', detail: 'martinezjohn@email.com — case reference #2691', color: 'indigo' },
+  { t: 12000, icon: '📅', label: 'Consultation slot found', detail: 'Tomorrow 9:00 AM — attorney calendar checked', color: 'indigo' },
+  { t: 15000, icon: '🔗', label: 'Booking link delivered', detail: 'Sent via SMS + email to lead',             color: 'indigo' },
+  { t: 18000, icon: '🎉', label: 'Consultation booked',   detail: 'John Martinez — Fri June 20, 9:00 AM ✓',  color: 'green', final: true },
+];
+
+const colorMap = {
+  green:  { dot: 'bg-green-500',  bg: 'bg-green-950',  border: 'border-green-800', text: 'text-green-300' },
+  indigo: { dot: 'bg-indigo-500', bg: 'bg-indigo-950', border: 'border-indigo-800', text: 'text-indigo-300' },
+};
+
+let running = false;
+let timers = [];
+
+function clock() {
+  const now = new Date();
+  const h = now.getHours() % 12 || 12;
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  const ap = now.getHours() >= 12 ? 'PM' : 'AM';
+  document.getElementById('clock').textContent = `${h}:${m}:${s} ${ap}`;
+}
+setInterval(clock, 1000);
+clock();
+
+function addEvent(ev, elapsed) {
+  const c = colorMap[ev.color];
+  const tl = document.getElementById('timeline');
+  const div = document.createElement('div');
+  div.className = `flex items-start gap-3 fade-in`;
+  div.innerHTML = `
+    <div class="w-8 h-8 ${c.bg} border ${c.border} rounded-lg flex items-center justify-center text-base flex-shrink-0 mt-0.5">${ev.icon}</div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2">
+        <span class="text-sm font-semibold text-white">${ev.label}</span>
+        <span class="text-xs mono text-gray-500 ml-auto flex-shrink-0">+${(elapsed/1000).toFixed(1)}s</span>
+      </div>
+      <div class="text-xs text-gray-400 mt-0.5 leading-relaxed">${ev.detail}</div>
+    </div>`;
+  tl.appendChild(div);
+  tl.scrollTop = tl.scrollHeight;
+
+  if (ev.qual) tickQual();
+  if (ev.sms) showSMS(elapsed);
+  if (ev.final) finish(elapsed);
+}
+
+function tickQual() {
+  ['q1','q2','q3','q4'].forEach((id, i) => {
+    setTimeout(() => {
+      const el = document.getElementById(id);
+      el.className = 'w-4 h-4 rounded-full bg-green-500 flex-shrink-0 flex items-center justify-center';
+      el.innerHTML = '<svg class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>';
+      el.parentElement.classList.replace('text-gray-500','text-white');
+    }, i * 350);
+  });
+  document.getElementById('status-pill').className = 'ml-auto px-2.5 py-1 bg-green-950 border border-green-800 rounded-full text-xs text-green-400 font-medium';
+  document.getElementById('status-pill').textContent = 'Qualified';
+}
+
+function showSMS(elapsed) {
+  const panel = document.getElementById('sms-panel');
+  panel.classList.remove('opacity-0');
+  panel.classList.add('opacity-100');
+  const now = new Date();
+  const h = now.getHours() % 12 || 12;
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  const ap = now.getHours() >= 12 ? 'PM' : 'AM';
+  document.getElementById('sms-time').textContent = `${h}:${m}:${s} ${ap}`;
+  document.getElementById('stat-time').textContent = (elapsed/1000).toFixed(0) + 's';
+}
+
+function finish(elapsed) {
+  document.getElementById('booked-badge').classList.remove('hidden');
+  document.getElementById('stat-status').textContent = 'Consultation Booked';
+  document.getElementById('stat-status').className = 'text-sm font-bold text-green-400';
+  document.getElementById('stat-attorney').textContent = 'Yes';
+  document.getElementById('progress-bar').style.width = '100%';
+  document.getElementById('progress-bar').classList.replace('bg-indigo-500','bg-green-500');
+  document.getElementById('stats-bar').classList.replace('opacity-0','opacity-100');
+  document.getElementById('lead-badge').classList.add('hidden');
+  const badge = document.getElementById('live-badge');
+  badge.className = 'flex items-center gap-2 px-3 py-1.5 bg-green-950 border border-green-700 rounded-full';
+  badge.innerHTML = '<svg class="w-3.5 h-3.5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg><span class="text-xs font-semibold text-green-400 mono">BOOKED</span>';
+}
+
+function updateTimer(ms) {
+  const s = (ms / 1000).toFixed(0);
+  const pct = Math.min((ms / 18000) * 100, 98);
+  document.getElementById('response-display').innerHTML = `<span class="text-white">${s}</span><span class="text-2xl text-gray-400 font-normal">s</span>`;
+  document.getElementById('progress-bar').style.width = pct + '%';
+}
+
+function runDemo() {
+  if (running) return;
+  running = true;
+
+  document.getElementById('lead-card').style.opacity = '1';
+  document.getElementById('lead-badge').classList.remove('hidden');
+
+  const start = Date.now();
+  const timerTick = setInterval(() => updateTimer(Date.now() - start), 100);
+  timers.push(timerTick);
+
+  EVENTS.forEach(ev => {
+    const t = setTimeout(() => addEvent(ev, Date.now() - start), ev.t);
+    timers.push(t);
+  });
+}
+
+function resetDemo() {
+  running = false;
+  timers.forEach(t => { clearTimeout(t); clearInterval(t); });
+  timers = [];
+
+  document.getElementById('timeline').innerHTML = '';
+  document.getElementById('response-display').innerHTML = '<span class="text-gray-700">--</span>';
+  document.getElementById('progress-bar').style.width = '0%';
+  document.getElementById('progress-bar').classList.replace('bg-green-500','bg-indigo-500');
+  document.getElementById('booked-badge').classList.add('hidden');
+  document.getElementById('sms-panel').classList.replace('opacity-100','opacity-0');
+  document.getElementById('stats-bar').classList.replace('opacity-100','opacity-0');
+  document.getElementById('stat-status').textContent = 'Waiting';
+  document.getElementById('stat-attorney').textContent = '—';
+  document.getElementById('stat-time').textContent = '—';
+  document.getElementById('lead-card').style.opacity = '0';
+  document.getElementById('lead-badge').classList.add('hidden');
+  document.getElementById('status-pill').className = 'ml-auto px-2.5 py-1 bg-gray-800 rounded-full text-xs text-gray-400 font-medium';
+  document.getElementById('status-pill').textContent = 'New';
+  ['q1','q2','q3','q4'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'w-4 h-4 rounded-full border border-gray-700 flex-shrink-0';
+    el.innerHTML = '';
+    el.parentElement.className = 'flex items-center gap-2 text-xs text-gray-500';
+  });
+  const badge = document.getElementById('live-badge');
+  badge.className = 'flex items-center gap-2 px-3 py-1.5 bg-green-950 border border-green-800 rounded-full';
+  badge.innerHTML = '<span class="w-2 h-2 bg-green-500 rounded-full pulse-green"></span><span class="text-xs font-semibold text-green-400 mono">LIVE</span>';
+
+  setTimeout(runDemo, 600);
+}
+
+// Auto-start after short delay
+setTimeout(runDemo, 1200);
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-4">
+  <div>
+    <h1 class="text-lg font-medium">Claude Agents</h1>
+    <p class="text-xs text-gray-400 mt-0.5">Copy any prompt → paste into Claude Code or Claude chat</p>
+  </div>
+</div>
+
+{% set agents = [
+  ('Lead Scraper', 'ti-map-search', 'Every morning', 'Finds PI law firms in target cities from Google Maps. Saves 3 hours/day.',
+  'Find personal injury law firms in [CITY, STATE].\n\nFor each firm extract: name, website, phone, Google rating, review count, address.\n\nOnly include firms with:\n✓ 4.0+ Google rating\n✓ 20+ reviews\n✓ Has website\n✓ US-based\n\nOutput as a table: Name | Website | Phone | Rating | Reviews | Qualified Y/N\n\nFind 20 qualified firms.'),
+
+  ('Lead Qualifier', 'ti-filter', 'After scraping', 'Scores each lead 1-10. Tells you exactly who to contact first.',
+  'Score these PI law firm leads 1-10.\n\nScoring:\n+2: 50+ Google reviews\n+2: Running Meta or Google ads (check facebook.com/ads/library)\n+2: Active LinkedIn (200+ connections on firm page)\n+2: 5+ attorneys visible on website\n+1: Has online booking or contact form\n+1: Posted on LinkedIn/social in last 30 days\n\nOutput: Name | Company | Score /10 | Priority (High 8+/Med 5-7/Low <5) | Why\n\nLeads to score:\n[PASTE LEAD LIST]'),
+
+  ('LinkedIn Comment', 'ti-message', 'Day 2 — warm pipeline', 'Writes genuine comments that get PI lawyers to notice you.',
+  'Write a LinkedIn comment for AJ at Velaro.\n\nRules:\n- Sound like a peer, never a vendor\n- Never mention Velaro or any service\n- Under 3 lines\n- Reference something specific from their post\n- Hint at having solved this problem before\n- No emojis, no "Great post!"\n\nPost to comment on:\n[PASTE POST]\n\nGenerate 3 options:\nA: Subtle (relating to problem)\nB: Direct (hinting at solution)\nC: Question (invites reply)'),
+
+  ('DM Personalizer', 'ti-send', 'Day 5-7 — first DM', 'Creates unique first-touch DMs per lead. Never a template.',
+  'Write a personalised outreach DM for AJ at Velaro.\n\nLead details:\n- Name: [NAME]\n- Firm: [FIRM]\n- City: [CITY]\n- Platform: [LinkedIn/Instagram]\n- Pain/recent post: [DETAIL or "none"]\n- One specific thing: [e.g. "5 attorneys", "runs Google ads", "posted about missed calls"]\n\nRules:\n- ONE specific detail about them\n- ONE question about their intake\n- NO pitch\n- Under 5 lines\n- "Hey [Name]" opener\n\nOutput: Just the message.'),
+
+  ('Reply Handler', 'ti-inbox', 'Every reply received', 'Classifies replies and drafts the perfect response.',
+  'Classify this reply and draft a response.\n\nReply: [PASTE REPLY]\nPlatform: [LinkedIn/Email/Instagram]\n\nClassify as:\n🟢 HOT — Interested, asking questions\n🟡 WARM — Curious but hesitant\n🔵 REFERRAL — Not right person but knows someone\n🟠 OBJECTION — Price/timing/already have solution\n🔴 NO — Not interested\n\nDraft response:\n- Match their exact energy and tone\n- HOT: Push for call, give Calendly link, create urgency\n- WARM: Answer question, soft yes/no CTA\n- OBJECTION: Acknowledge, reframe, soft CTA\n- NO: Leave door open, no pushing\n- Under 5 lines, human not templated\n\nOutput:\nClassification: [label]\nResponse: [message]'),
+
+  ('Weekly Posts', 'ti-pencil', 'Every Sunday evening', 'Generates 5 LinkedIn posts in your exact voice. Never AI-sounding.',
+  'Generate 5 LinkedIn posts for AJ at Velaro (AI intake systems for PI law firms).\n\nVoice rules — CRITICAL:\n✓ Start with observation or story, NEVER a conclusion\n✓ Specific numbers always (never "significantly improved")\n✓ Real tool names: n8n, VAPI, GHL, Claude\n✓ Uses "I" — personal not corporate\n✓ Casual: "anyway", "the thing is", "honestly"\n✓ Sometimes no CTA at end\n✗ NEVER: "In today\'s world", "game changer", "hot take:", "excited to share"\n✗ No perfect grammar every sentence — fragments fine\n\nThis week context:\n[DESCRIBE WHAT HAPPENED — builds, calls, results, observations]\n\nPosts:\nMon: observation or test result\nTue: client story (anonymous, specific numbers)\nWed: what you built today\nThu: how something works (conversational)\nFri: honest personal reflection\n\nOutput each post ready to copy-paste. No labels inside posts.'),
+
+  ('Carousel Generator', 'ti-layout-grid', 'When making LinkedIn carousel', 'Creates slide-by-slide content for LinkedIn PDF carousels.',
+  'Create a LinkedIn carousel for AJ at Velaro targeting PI law firms.\n\nTopic: [TOPIC]\n\nFormat: 7 slides\nSlide 1: Bold hook — the problem or surprising stat\nSlide 2-5: The story, breakdown, or steps\nSlide 6: The solution/fix\nSlide 7: CTA — "Book a free intake audit → calendly.com/velaro"\n\nRules:\n- Each slide: 1 headline (5-8 words) + 2-3 bullet points or 1-2 sentences\n- Conversational, not corporate\n- Specific to PI law firms\n- First slide must stop the scroll\n\nOutput each slide clearly labeled: SLIDE 1, SLIDE 2 etc.'),
+
+  ('Proposal Builder', 'ti-file-text', 'After every discovery call', 'Fills in 5 fields, generates complete custom proposal with ROI.',
+  'Build a proposal for a PI law firm prospect.\n\nFirm name: [NAME]\nNumber of attorneys: [NUMBER]\nMain pain from call: [EXACT WORDS THEY USED]\nAverage case value: [$AMOUNT]\nCurrently running ads: [YES/NO + spend if known]\nPackage: [Small $8k / Mid $15k / Large $20k]\n\nGenerate a 1-page proposal:\n1. Their specific problem (use their words)\n2. What we build (4 weeks, what each week delivers)\n3. ROI calculation (their numbers × recovery rate)\n4. Investment (setup + monthly)\n5. Payment options (upfront / 50-50 / 3-month plan)\n6. Next steps\n\nTone: professional but not stiff. Lawyers respect directness.'),
+
+  ('Pre-call Research', 'ti-search', '30 min before calls', 'Preps you with talking points, questions, and objection handling.',
+  'Prep me for a discovery call with a PI law firm.\n\nFirm: [FIRM NAME]\nContact: [NAME + TITLE]\nWebsite: [URL]\nLinkedIn: [URL if available]\nCalendly answers: [PASTE THEIR INTAKE FORM RESPONSES]\n\nGive me:\n1. 3 things to mention showing I researched them specifically\n2. 5 tailored discovery questions for their situation\n3. Their likely objections + how to handle each\n4. Suggested pricing tier based on their firm size\n5. Opening line for the call'),
+
+  ('Reddit Comment', 'ti-brand-reddit', 'Daily — 15 min', 'Drafts genuine, helpful replies to PI lawyer posts on Reddit.',
+  'Write a Reddit comment reply for AJ (founder of AI automation agency, builds intake systems for PI law firms).\n\nRules:\n- Genuinely helpful, not promotional\n- Never mention Velaro or pitch services\n- Sound like someone who has relevant experience\n- Under 5 sentences\n- If it naturally fits, hint at having solved this yourself\n\nPost/question to reply to:\n[PASTE REDDIT POST]\n\nOutput: Just the comment.'),
+
+  ('Gmail Sequence Writer', 'ti-mail', 'When adding new lead batch', 'Writes personalised 3-email sequences for specific lead segments.',
+  'Write a personalised 3-email cold outreach sequence for PI law firms.\n\nTarget segment: [e.g. "5-10 attorney firms in Texas running Google Ads"]\nOne specific pain to reference: [e.g. "high ad spend, low intake conversion"]\n\nEmail 1 (Day 1): Problem-focused, 150 words max, one CTA\nEmail 2 (Day 5): Different angle, shorter, reference E1\nEmail 3 (Day 10): Breakup email, leaves door open\n\nRules:\n- Subject lines: specific, curiosity-driven, no clickbait\n- First line: specific to their situation\n- Include proof point from health/wellness client\n- End E1 and E2 with Calendly link\n- Sound like a human wrote it\n\nOutput all 3 emails with subject lines.'),
+
+  ('Monthly Report', 'ti-chart-bar', 'Last day of each month', 'Turns GHL dashboard data into a professional client report.',
+  'Generate a monthly performance report for a PI law firm client.\n\nClient: [FIRM NAME]\nMonth: [MONTH YEAR]\nData from GHL: [PASTE METRICS — leads captured, calls answered, bookings, response times]\n\nFormat:\n1. Month summary (2 sentences — the main wins)\n2. Key metrics table (before vs after vs this month)\n3. Top 3 wins this month\n4. What we\'re optimising next month\n5. Any recommendations\n\nTone: confident, data-driven, brief. One page max.'),
+] %}
+
+<div class="space-y-3">
+{% for name, icon, timing, desc, prompt in agents %}
+<div class="bg-white rounded-xl border border-gray-100 p-4">
+  <div class="flex items-start gap-3">
+    <div class="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+      <i class="ti {{ icon }}" style="font-size:17px; color:#6b7280;" aria-hidden="true"></i>
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-3 mb-1">
+        <span class="text-sm font-medium">{{ name }}</span>
+        <span class="text-xs text-gray-400 mono">{{ timing }}</span>
+      </div>
+      <p class="text-xs text-gray-500 mb-2">{{ desc }}</p>
+      <details>
+        <summary class="text-xs text-blue-600 cursor-pointer hover:text-blue-800 select-none">View prompt</summary>
+        <pre class="mt-2 text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed bg-gray-50 rounded-lg p-3 border border-gray-100">{{ prompt }}</pre>
+      </details>
+    </div>
+    <button onclick="copyText({{ prompt | tojson }}, this)" class="text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 flex-shrink-0">Copy</button>
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endblock %}

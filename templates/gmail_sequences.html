@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Velaro — Email Sequences</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>* { font-family: 'Inter', sans-serif; } .mono { font-family: 'JetBrains Mono', monospace; }</style>
+</head>
+<body class="bg-gray-50 text-gray-900 text-sm">
+<div class="max-w-6xl mx-auto p-6">
+
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-5">
+    <div class="flex items-center gap-3">
+      <a href="/" class="text-xs text-gray-400 hover:text-gray-700">Accounts</a>
+      <span class="text-gray-300">·</span>
+      <a href="/compose" class="text-xs text-gray-400 hover:text-gray-700">Compose</a>
+      <span class="text-gray-300">·</span>
+      <span class="text-xs font-medium text-gray-900">Sequences</span>
+      <span class="text-gray-300">·</span>
+      <a href="/sent" class="text-xs text-gray-400 hover:text-gray-700">Sent</a>
+      <span class="text-gray-300">·</span>
+      <a href="/status" class="text-xs text-gray-400 hover:text-gray-700">Status</a>
+    </div>
+    <div class="text-xs text-gray-400">Last checked: {{ now }} · <span class="text-green-500">auto every 15 min</span></div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid grid-cols-6 gap-3 mb-5">
+    {% for label, val, color in [
+      ('Total', stats.total, 'text-gray-700'),
+      ('Active', stats.active, 'text-blue-600'),
+      ('Due Now', stats.due, 'text-orange-500'),
+      ('Replied', stats.replied, 'text-green-600'),
+      ('Completed', stats.completed, 'text-gray-500'),
+      ('Paused', stats.paused, 'text-gray-400'),
+    ] %}
+    <div class="bg-white rounded-xl border border-gray-100 p-3 text-center">
+      <div class="mono text-2xl font-semibold {{ color }}">{{ val }}</div>
+      <div class="text-xs text-gray-400 mt-0.5">{{ label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Action buttons -->
+  <div class="flex items-center gap-3 mb-5 flex-wrap">
+    <button id="check-btn" onclick="checkReplies()"
+      class="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium hover:bg-gray-50 transition-colors">
+      <span>📬</span> Check Replies
+    </button>
+    <button id="run-btn" onclick="runDue()"
+      class="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-medium hover:bg-blue-700 transition-colors">
+      <span>▶</span> Send Due Follow-ups
+      {% if stats.due > 0 %}<span class="bg-blue-500 px-1.5 py-0.5 rounded-full mono">{{ stats.due }}</span>{% endif %}
+    </button>
+    <button id="stop-seq-btn" onclick="stopSeq()" style="display:none"
+      class="px-4 py-2 bg-red-600 text-white rounded-xl text-xs font-medium hover:bg-red-700">Stop</button>
+    <div id="action-status" class="text-xs text-gray-400 ml-2"></div>
+    <a href="/compose" class="ml-auto px-3 py-2 bg-gray-900 text-white rounded-xl text-xs font-medium hover:bg-gray-700">
+      + New Campaign
+    </a>
+  </div>
+
+  <!-- Live progress (sequence runner) -->
+  <div id="seq-progress" class="hidden bg-white rounded-xl border border-blue-200 p-4 mb-4">
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-xs font-medium text-blue-700">Running follow-ups...</span>
+      <span id="sp-counts" class="mono text-xs text-gray-500"></span>
+    </div>
+    <div class="w-full bg-gray-100 rounded-full h-1.5 mb-2">
+      <div id="sp-bar" class="h-1.5 rounded-full bg-blue-600 transition-all" style="width:0%"></div>
+    </div>
+    <div id="sp-current" class="text-xs text-gray-500 mono truncate mb-2"></div>
+    <div id="sp-log" class="space-y-0.5 max-h-32 overflow-y-auto"></div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="flex gap-2 mb-4 flex-wrap">
+    {% for val, label in [('active','Active'),('due','Due Now'),('replied','Replied'),('completed','Completed'),('paused','Paused'),('all','All')] %}
+    <a href="/sequences?status={{ val }}"
+      class="text-xs px-3 py-1.5 rounded-lg border transition-colors
+        {{ 'bg-gray-900 text-white border-gray-900' if status_filter==val else 'border-gray-200 text-gray-500 hover:bg-gray-50' }}">
+      {{ label }}
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- Bulk action bar -->
+  <div id="bulk-bar" class="hidden bg-gray-900 text-white px-4 py-2.5 rounded-xl mb-3 flex items-center gap-3">
+    <span id="bulk-count" class="text-xs font-medium"></span>
+    <button onclick="bulkSeq('mark_replied')" class="text-xs px-3 py-1.5 bg-green-600 rounded-lg">Mark Replied</button>
+    <button onclick="bulkSeq('pause')" class="text-xs px-3 py-1.5 bg-gray-600 rounded-lg">Pause</button>
+    <button onclick="bulkSeq('resume')" class="text-xs px-3 py-1.5 bg-blue-600 rounded-lg">Resume</button>
+    <button onclick="bulkSeq('delete')" class="text-xs px-3 py-1.5 bg-red-600 rounded-lg">Delete</button>
+    <button onclick="clearSel()" class="text-xs text-gray-400 hover:text-white ml-auto">Deselect</button>
+  </div>
+
+  <!-- Table -->
+  {% if seqs %}
+  <div class="bg-white rounded-xl border border-gray-100 overflow-hidden">
+    <table class="w-full">
+      <thead class="border-b border-gray-100 bg-gray-50">
+        <tr class="text-xs text-gray-400 font-medium">
+          <th class="px-3 py-2.5 w-8"><input type="checkbox" id="sel-all" onchange="toggleAllSeq(this)" class="rounded border-gray-300"></th>
+          <th class="text-left px-4 py-2.5">Lead</th>
+          <th class="text-left px-4 py-2.5">Step</th>
+          <th class="text-left px-4 py-2.5">Last Sent</th>
+          <th class="text-left px-4 py-2.5">Next Due</th>
+          <th class="text-left px-4 py-2.5">Status</th>
+          <th class="px-4 py-2.5">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in seqs %}
+        <tr class="border-b border-gray-50 last:border-0 hover:bg-gray-50 seq-row {{ 'bg-orange-50' if s.overdue else '' }}"
+            data-id="{{ s.id }}">
+          <td class="px-3 py-2.5">
+            <input type="checkbox" class="seq-cb rounded border-gray-300" value="{{ s.id }}" onchange="onSeqCb()">
+          </td>
+          <td class="px-4 py-2.5">
+            <div class="font-medium text-sm">{{ s.lead_name or s.lead_email }}</div>
+            <div class="text-xs text-gray-400">{{ s.lead_email }}</div>
+            {% if s.firm_name %}<div class="text-xs text-gray-400">{{ s.firm_name }}</div>{% endif %}
+            {% if s.account_email %}<div class="text-xs text-blue-400 mt-0.5">via {{ s.account_email }}</div>{% endif %}
+          </td>
+          <td class="px-4 py-2.5">
+            {% if s.completed %}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Done (3/3)</span>
+            {% elif s.replied %}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700">Replied ✓</span>
+            {% else %}
+              <div class="flex items-center gap-1">
+                {% for i in range(1, 5) %}
+                <div class="w-5 h-5 rounded-full flex items-center justify-center text-xs
+                  {{ 'bg-blue-600 text-white' if i < s.next_email else 'bg-gray-100 text-gray-400' }}">
+                  {{ i }}
+                </div>
+                {% endfor %}
+                <span class="text-xs text-gray-500 ml-1">→ Email {{ s.next_email }}</span>
+              </div>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2.5 text-xs text-gray-400 mono">
+            {{ s.last_sent_at[:10] if s.last_sent_at else '—' }}
+          </td>
+          <td class="px-4 py-2.5 text-xs mono {{ 'text-orange-500 font-medium' if s.overdue else 'text-gray-500' }}">
+            {% if s.completed or s.replied %}—
+            {% elif s.paused %}<span class="text-gray-400">Paused</span>
+            {% elif s.next_send_at %}{{ s.next_send_at[:10] }}{% if s.overdue %} ⚡{% endif %}
+            {% else %}—{% endif %}
+          </td>
+          <td class="px-4 py-2.5">
+            {% if s.replied and s.opted_out %}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Opted Out</span>
+            {% elif s.replied %}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700">Replied</span>
+            {% elif s.completed %}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Completed</span>
+            {% elif s.opted_out %}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-red-50 text-red-600">Opted out</span>
+            {% elif s.paused %}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">Paused</span>
+            {% elif s.overdue %}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Due ⚡</span>
+            {% else %}
+              <span class="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">Active</span>
+            {% endif %}
+          </td>
+          <td class="px-4 py-2.5">
+            <div class="flex items-center gap-1">
+              {% if s.replied %}
+              <a href="https://mail.google.com/mail/u/0/#search/from%3A{{ s.lead_email | urlencode }}" target="_blank"
+                class="text-xs px-2 py-1 bg-green-50 text-green-700 hover:bg-green-100 rounded font-medium no-underline">
+                View Reply
+              </a>
+              {% if not s.opted_out %}
+              <form method="post" action="/sequences/{{ s.id }}/action" class="inline" onsubmit="return confirm('Stop all emails to {{ s.lead_name or s.lead_email }}?')">
+                <input type="hidden" name="action" value="opt_out">
+                <button type="submit" class="text-xs px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded font-medium">Stop</button>
+              </form>
+              {% else %}
+              <span class="text-xs px-2 py-1 bg-gray-100 text-gray-400 rounded font-medium">Stopped</span>
+              {% endif %}
+              {% endif %}
+              {% if not s.replied and not s.completed %}
+              <form method="post" action="/sequences/{{ s.id }}/action" class="inline">
+                <input type="hidden" name="action" value="{{ 'resume' if s.paused else 'pause' }}">
+                <button class="text-xs text-gray-400 hover:text-gray-700 px-1.5 py-1">
+                  {{ '▶' if s.paused else '⏸' }}
+                </button>
+              </form>
+              <form method="post" action="/sequences/{{ s.id }}/action" class="inline" onsubmit="return confirm('Mark as replied?')">
+                <input type="hidden" name="action" value="mark_replied">
+                <button class="text-xs text-green-500 hover:text-green-700 px-1.5 py-1">✓</button>
+              </form>
+              {% endif %}
+              <form method="post" action="/sequences/{{ s.id }}/action" class="inline" onsubmit="return confirm('Delete?')">
+                <input type="hidden" name="action" value="delete">
+                <button class="text-xs text-red-400 hover:text-red-600 px-1.5 py-1">✕</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="bg-white rounded-xl border border-dashed border-gray-200 p-12 text-center text-gray-400">
+    <div class="text-2xl mb-2">📨</div>
+    <div class="text-sm font-medium mb-1">No sequences here</div>
+    <div class="text-xs mb-4">Start a campaign from Compose and tick "Track as sequence"</div>
+    <a href="/compose" class="text-xs text-blue-600 hover:underline">Go to Compose →</a>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+let seqJobId = null;
+let seqPoll  = null;
+
+async function checkReplies() {
+  const btn = document.getElementById('check-btn');
+  btn.disabled = true; btn.textContent = '🔄 Checking...';
+  document.getElementById('action-status').textContent = '';
+  try {
+    const res  = await fetch('/sequences/check-replies', {method:'POST'});
+    const data = await res.json();
+    if (data.errors && data.errors.length) {
+      document.getElementById('action-status').textContent = '⚠ IMAP error — make sure IMAP is enabled in Gmail settings';
+      document.getElementById('action-status').className = 'text-xs text-red-500 ml-2';
+    } else {
+      document.getElementById('action-status').textContent = `Found ${data.new_replies} new repl${data.new_replies===1?'y':'ies'}`;
+      document.getElementById('action-status').className = 'text-xs text-green-600 ml-2';
+      if (data.new_replies > 0) setTimeout(() => location.reload(), 1500);
+    }
+  } catch(e) {
+    document.getElementById('action-status').textContent = 'Error: ' + e;
+  }
+  btn.disabled = false; btn.innerHTML = '📬 Check Replies';
+}
+
+async function runDue() {
+  const res  = await fetch('/sequences/run-due', {method:'POST'});
+  const data = await res.json();
+  seqJobId = data.job_id;
+  document.getElementById('run-btn').style.display  = 'none';
+  document.getElementById('stop-seq-btn').style.display = '';
+  document.getElementById('seq-progress').classList.remove('hidden');
+  seqPoll = setInterval(pollSeq, 1500);
+}
+
+async function stopSeq() {
+  if (seqJobId) await fetch('/api/seq-stop/' + seqJobId, {method:'POST'});
+}
+
+async function pollSeq() {
+  if (!seqJobId) return;
+  const d = await (await fetch('/api/seq-progress/' + seqJobId)).json();
+  const pct = d.total > 0 ? Math.round(d.sent / d.total * 100) : 0;
+  document.getElementById('sp-bar').style.width = pct + '%';
+  document.getElementById('sp-counts').textContent = `${d.sent} sent · ${d.skipped} skipped · ${d.total} total`;
+  document.getElementById('sp-current').textContent = d.current ? '→ ' + d.current : '';
+
+  const logEl = document.getElementById('sp-log');
+  logEl.innerHTML = '';
+  (d.log||[]).slice().reverse().forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'flex gap-2 text-xs py-0.5';
+    const colorMap = {'sent':'text-green-600','failed':'text-red-500','warn':'text-amber-600'};
+    const iconMap  = {'sent':'✓','failed':'✗','warn':'⚠'};
+    const c = colorMap[e.status] || 'text-gray-400';
+    const ic = iconMap[e.status] || '·';
+    div.innerHTML = '<span class="' + c + ' font-bold w-4">' + ic + '</span>'
+      + '<span class="mono text-gray-600">' + (e.email||e.msg||'') + '</span>'
+      + (e.step ? '<span class="text-gray-400">' + e.step + '</span>' : '');
+    logEl.appendChild(div);
+  });
+
+  if (['done','stopped','error'].includes(d.status)) {
+    clearInterval(seqPoll);
+    document.getElementById('stop-seq-btn').style.display  = 'none';
+    document.getElementById('run-btn').style.display = '';
+    document.getElementById('action-status').textContent = `Done — ${d.sent} follow-ups sent`;
+    document.getElementById('action-status').className = 'text-xs text-green-600 ml-2';
+    setTimeout(() => location.reload(), 2000);
+  }
+}
+
+// ── Bulk selection ──
+function toggleAllSeq(el) {
+  document.querySelectorAll('.seq-cb').forEach(cb => cb.checked = el.checked);
+  onSeqCb();
+}
+function onSeqCb() {
+  const ids = [...document.querySelectorAll('.seq-cb:checked')].map(c=>c.value);
+  const bar = document.getElementById('bulk-bar');
+  bar.classList.toggle('hidden', ids.length===0);
+  bar.classList.toggle('flex', ids.length>0);
+  document.getElementById('bulk-count').textContent = ids.length + ' selected';
+}
+function clearSel() {
+  document.querySelectorAll('.seq-cb').forEach(cb=>cb.checked=false);
+  document.getElementById('sel-all').checked=false;
+  onSeqCb();
+}
+async function bulkSeq(action) {
+  const ids = [...document.querySelectorAll('.seq-cb:checked')].map(c=>c.value);
+  if (!ids.length) return;
+  if (action==='delete' && !confirm(`Delete ${ids.length} sequences?`)) return;
+  await fetch('/sequences/bulk', {method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({action,ids})});
+  location.reload();
+}
+
+</script>
+
+<!-- Active Job Banner -->
+<div id="job-banner" class="hidden fixed top-0 left-0 right-0 z-50 shadow-lg">
+  <div class="bg-blue-600 text-white px-4 py-2 flex items-center justify-between text-xs">
+    <div class="flex items-center gap-3">
+      <span class="inline-flex gap-1 items-center">
+        <span class="w-2 h-2 rounded-full bg-white animate-ping inline-block"></span>
+        <span class="font-semibold">Sending in progress</span>
+      </span>
+      <span id="jb-counts" class="text-blue-100"></span>
+      <span id="jb-current" class="text-blue-200 truncate max-w-xs hidden sm:block"></span>
+    </div>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <div class="w-32 bg-blue-800 rounded-full h-1.5">
+        <div id="jb-bar" class="h-1.5 rounded-full bg-white transition-all duration-500" style="width:0%"></div>
+      </div>
+      <a href="/compose" class="text-white underline hover:text-blue-100">View →</a>
+      <button id="jb-stop" class="bg-white text-blue-700 font-semibold px-2.5 py-0.5 rounded-lg hover:bg-blue-50">Stop</button>
+    </div>
+  </div>
+</div>
+<script>
+(function() {
+  let activeJobId = null;
+  const banner = document.getElementById('job-banner');
+  document.getElementById('jb-stop').addEventListener('click', async () => {
+    if (activeJobId) await fetch('/api/stop/' + activeJobId, {method:'POST'});
+  });
+  async function checkJob() {
+    try {
+      const d = await (await fetch('/api/active-job')).json();
+      if (d.active) {
+        activeJobId = d.job_id;
+        banner.classList.remove('hidden');
+        document.body.style.paddingTop = '36px';
+        const pct = d.total > 0 ? Math.round((d.sent + d.failed) / d.total * 100) : 0;
+        document.getElementById('jb-bar').style.width = pct + '%';
+        document.getElementById('jb-counts').textContent = d.sent + '/' + d.total + ' sent' + (d.failed ? ' · ' + d.failed + ' failed' : '') + (d.next_in > 0 ? ' · next in ' + d.next_in + 's' : '');
+        const cur = document.getElementById('jb-current');
+        cur.textContent = d.current ? '→ ' + d.current : '';
+        cur.classList.toggle('hidden', !d.current);
+      } else {
+        banner.classList.add('hidden');
+        document.body.style.paddingTop = '';
+        activeJobId = null;
+      }
+    } catch(e) {}
+  }
+  checkJob();
+  setInterval(checkJob, 2000);
+})();
+</script>
+</body>
+</html>
